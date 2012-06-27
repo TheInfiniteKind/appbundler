@@ -1,0 +1,45 @@
+Index: appbundler/native/main.m
+===================================================================
+--- appbundler/native/main.m	(revision 24)
++++ appbundler/native/main.m	(working copy)
+@@ -72,8 +72,11 @@
+     // Get the main bundle
+     NSBundle *mainBundle = [NSBundle mainBundle];
+ 
+-    // Set the working directory to the user's home directory
+-    chdir([NSHomeDirectory() UTF8String]);
++    // Set the working directory to the main bundle root
++    NSString *mainBundlePath = [mainBundle bundlePath];
++    if (chdir([mainBundlePath UTF8String]) == -1) {
++        [NSException raise:@JAVA_LAUNCH_ERROR format:@"Could not set initial working directory."];
++    }
+ 
+     // Get the main bundle's info dictionary
+     NSDictionary *infoDictionary = [mainBundle infoDictionary];
+@@ -111,7 +114,6 @@
+     }
+ 
+     // Set the class path
+-    NSString *mainBundlePath = [mainBundle bundlePath];
+     NSString *javaPath = [mainBundlePath stringByAppendingString:@"/Contents/Java"];
+     NSMutableString *classPath = [NSMutableString stringWithFormat:@"-Djava.class.path=%@/Classes", javaPath];
+ 
+@@ -162,7 +164,7 @@
+     }
+ 
+     // Invoke JLI_Launch()
+-    return jli_LaunchFxnPtr(argc, argv,
++    int result = jli_LaunchFxnPtr(argc, argv,
+                             0, NULL,
+                             0, NULL,
+                             "",
+@@ -173,4 +175,9 @@
+                             FALSE,
+                             FALSE,
+                             0);
++
++    // Set the working directory to the user's home directory
++    chdir([NSHomeDirectory() UTF8String]);
++
++    return result;
+ }
