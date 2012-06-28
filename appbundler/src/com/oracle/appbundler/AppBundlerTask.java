@@ -38,6 +38,7 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Iterator;
 
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -47,6 +48,8 @@ import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.DirectoryScanner;
 import org.apache.tools.ant.Task;
 import org.apache.tools.ant.types.FileSet;
+import org.apache.tools.ant.types.Reference;
+import org.apache.tools.ant.types.resources.FileResource;
 
 /**
  * App bundler Ant task.
@@ -74,6 +77,8 @@ public class AppBundlerTask extends Task {
     private ArrayList<FileSet> libraryPath = new ArrayList<>();
     private ArrayList<String> options = new ArrayList<>();
     private ArrayList<String> arguments = new ArrayList<>();
+
+    private Reference classPathRef;
 
     private static final String EXECUTABLE_NAME = "JavaAppLauncher";
     private static final String DEFAULT_ICON_NAME = "GenericApp.icns";
@@ -149,6 +154,10 @@ public class AppBundlerTask extends Task {
             "jre/lib/plugin.jar",
             "jre/lib/security/javaws.policy"
         });
+    }
+             
+    public void setClasspathRef(Reference ref) {   
+        this.classPathRef = ref;                                         
     }
 
     public void addConfiguredClassPath(FileSet classPath) {
@@ -282,6 +291,9 @@ public class AppBundlerTask extends Task {
             // Copy class path entries to Java folder
             copyClassPathEntries(javaDirectory);
 
+            // Copy class path ref entries to Java folder
+            copyClassPathRefEntries(javaDirectory);            
+
             // Copy library path entries to MacOS folder
             copyLibraryPathEntries(macOSDirectory);
 
@@ -324,6 +336,22 @@ public class AppBundlerTask extends Task {
                 String includedFile = includedFiles[i];
                 File source = new File(runtimeHomeDirectory, includedFile);
                 File destination = new File(pluginHomeDirectory, includedFile);
+                copy(source, destination);
+            }
+        }
+    }
+
+    private void copyClassPathRefEntries(File javaDirectory) throws IOException {
+        if(classPathRef != null) {
+            org.apache.tools.ant.types.Path classpath = 
+                    (org.apache.tools.ant.types.Path) classPathRef.getReferencedObject(getProject());
+            
+            @SuppressWarnings("unchecked")
+            Iterator<FileResource> iter = (Iterator<FileResource>) classpath.iterator();
+            while(iter.hasNext()) {
+                FileResource resource = iter.next();
+                File source = resource.getFile();
+                File destination = new File(javaDirectory, source.getName());
                 copy(source, destination);
             }
         }
