@@ -77,6 +77,7 @@ public class AppBundlerTask extends Task {
     private ArrayList<FileSet> libraryPath = new ArrayList<>();
     private ArrayList<String> options = new ArrayList<>();
     private ArrayList<String> arguments = new ArrayList<>();
+    private ArrayList<String> architectures = new ArrayList<>();
 
     private Reference classPathRef;
 
@@ -186,6 +187,16 @@ public class AppBundlerTask extends Task {
         }
 
         arguments.add(value);
+    }
+
+    public void addConfiguredArch(Architecture architecture) throws BuildException {
+        String name = architecture.getName();
+
+        if (name == null) {
+            throw new BuildException("Name is required.");
+        }
+
+        architectures.add(name);   
     }
 
     @Override
@@ -444,6 +455,32 @@ public class AppBundlerTask extends Task {
 
             // Write main class name
             writeProperty(xout, "JVMMainClassName", mainClassName);
+
+
+            // Write architectures
+            writeKey(xout, "JVMArchs");
+
+            xout.writeStartElement(ARRAY_TAG);
+            xout.writeCharacters("\n");
+
+            for (String architecture : architectures) {
+                writeString(xout, architecture);
+            }
+
+            xout.writeEndElement();
+            xout.writeCharacters("\n");
+
+            writeKey(xout, "LSArchitecturePriority");
+
+            xout.writeStartElement(ARRAY_TAG);
+            xout.writeCharacters("\n");
+
+            for (String architecture : architectures) {
+                writeString(xout, architecture);
+            }
+
+            xout.writeEndElement();
+            xout.writeCharacters("\n");
 
             // Write options
             writeKey(xout, "JVMOptions");
