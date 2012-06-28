@@ -9,4 +9,6 @@ with the following changes:
   http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=7159381 
   in the JavaAppLauncher.
 - Add classpathref support to bundleapp
+- Add support for JVMArchs and LSArchitecturePriority keys
+- Allow to specify a custom value for CFBundleVersion 
 
