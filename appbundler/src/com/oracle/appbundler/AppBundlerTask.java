@@ -463,18 +463,6 @@ public class AppBundlerTask extends Task {
 
 
             // Write architectures
-            writeKey(xout, "JVMArchs");
-
-            xout.writeStartElement(ARRAY_TAG);
-            xout.writeCharacters("\n");
-
-            for (String architecture : architectures) {
-                writeString(xout, architecture);
-            }
-
-            xout.writeEndElement();
-            xout.writeCharacters("\n");
-
             writeKey(xout, "LSArchitecturePriority");
 
             xout.writeStartElement(ARRAY_TAG);
