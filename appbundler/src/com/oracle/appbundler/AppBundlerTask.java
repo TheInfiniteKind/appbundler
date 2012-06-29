@@ -79,7 +79,8 @@ public class AppBundlerTask extends Task {
     private ArrayList<String> options = new ArrayList<>();
     private ArrayList<String> arguments = new ArrayList<>();
     private ArrayList<String> architectures = new ArrayList<>();
-
+    private ArrayList<BundleDocument> bundleDocuments = new ArrayList<>();
+    
     private Reference classPathRef;
 
     private static final String EXECUTABLE_NAME = "JavaAppLauncher";
@@ -172,6 +173,10 @@ public class AppBundlerTask extends Task {
 
     public void addConfiguredLibraryPath(FileSet libraryPath) {
         this.libraryPath.add(libraryPath);
+    }
+    
+    public void addConfiguredBundleDocument(BundleDocument document) {
+        this.bundleDocuments.add(document);
     }
 
     public void addConfiguredOption(Option option) throws BuildException {
@@ -462,6 +467,46 @@ public class AppBundlerTask extends Task {
             writeProperty(xout, "JVMMainClassName", mainClassName);
 
 
+            // Write CFBundleDocument entries
+            writeKey(xout, "CFBundleDocumentTypes");
+            
+            xout.writeStartElement(ARRAY_TAG);
+            xout.writeCharacters("\n");
+            
+            for(BundleDocument bundleDocument: bundleDocuments) {
+                xout.writeStartElement(DICT_TAG);
+                xout.writeCharacters("\n");
+                
+                writeKey(xout, "CFBundleTypeExtensions");
+                xout.writeStartElement(ARRAY_TAG);
+                xout.writeCharacters("\n");
+                for(String extension : bundleDocument.getExtensions()) {
+                    writeString(xout, extension);
+                }
+                xout.writeEndElement();
+                xout.writeCharacters("\n");
+                
+                if(bundleDocument.hasIcon()) {
+                    writeKey(xout, "CFBundleTypeIconFile");
+                    writeString(xout, bundleDocument.getIcon());
+                }
+                
+                writeKey(xout, "CFBundleTypeName");
+                writeString(xout, bundleDocument.getIcon());
+                    
+                writeKey(xout, "CFBundleTypeRole");
+                writeString(xout, bundleDocument.getIcon());
+                
+                writeKey(xout, "LSTypeIsPackage");
+                writeBoolean(xout, bundleDocument.isPackage());
+                
+                xout.writeEndElement();
+                xout.writeCharacters("\n");
+            }
+            
+            xout.writeEndElement();
+            xout.writeCharacters("\n");
+            
             // Write architectures
             writeKey(xout, "LSArchitecturePriority");
 
@@ -533,6 +578,10 @@ public class AppBundlerTask extends Task {
         xout.writeCharacters(value);
         xout.writeEndElement();
         xout.writeCharacters("\n");
+    }
+    
+    private void writeBoolean(XMLStreamWriter xout, boolean value) throws XMLStreamException {
+        xout.writeEmptyElement(value ? "true" : "false");
     }
 
     private void writeProperty(XMLStreamWriter xout, String key, String value) throws XMLStreamException {
