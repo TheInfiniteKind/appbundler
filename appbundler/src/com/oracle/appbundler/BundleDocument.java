@@ -63,7 +63,7 @@ public class BundleDocument {
     }
 
     public void setRole(String role) {
-      this.role = capitalizeFirst(name);
+      this.role = capitalizeFirst(role);
     }
     
     public void setIsPackage(String isPackageString) {
