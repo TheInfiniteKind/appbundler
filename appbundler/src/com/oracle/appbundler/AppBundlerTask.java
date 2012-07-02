@@ -495,7 +495,7 @@ public class AppBundlerTask extends Task {
                 writeString(xout, bundleDocument.getIcon());
                     
                 writeKey(xout, "CFBundleTypeRole");
-                writeString(xout, bundleDocument.getIcon());
+                writeString(xout, bundleDocument.getRole());
                 
                 writeKey(xout, "LSTypeIsPackage");
                 writeBoolean(xout, bundleDocument.isPackage());
