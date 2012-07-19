@@ -71,6 +71,8 @@ public class AppBundlerTask extends Task {
 
     private String applicationCategory = null;
 
+    private boolean highResolutionCapable = true;
+
     // JVM info properties
     private String mainClassName = null;
     private FileSet runtime = null;
@@ -133,6 +135,10 @@ public class AppBundlerTask extends Task {
 
     public void setApplicationCategory(String applicationCategory) {
         this.applicationCategory = applicationCategory;
+    }
+
+    public void setHighResolutionCapable(boolean highResolutionCapable) {
+        this.highResolutionCapable = highResolutionCapable;
     }
 
     public void setMainClassName(String mainClassName) {
@@ -456,6 +462,12 @@ public class AppBundlerTask extends Task {
 
             if (applicationCategory != null) {
                 writeProperty(xout, "LSApplicationCategoryType", applicationCategory);
+            }
+
+            if (highResolutionCapable) {
+                writeKey(xout, "NSHighResolutionCapable");
+                writeBoolean(xout, true); 
+                xout.writeCharacters("\n");
             }
 
             // Write runtime
