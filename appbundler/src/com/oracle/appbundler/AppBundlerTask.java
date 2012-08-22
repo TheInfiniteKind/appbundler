@@ -26,11 +26,14 @@
 
 package com.oracle.appbundler;
 
+import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.Writer;
 import java.net.URL;
 import java.nio.file.Files;
@@ -39,6 +42,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -96,6 +101,8 @@ public class AppBundlerTask extends Task {
     private static final String KEY_TAG = "key";
     private static final String ARRAY_TAG = "array";
     private static final String STRING_TAG = "string";
+    
+    private static final int BUFFER_SIZE = 2048;
 
     public void setOutputDirectory(File outputDirectory) {
         this.outputDirectory = outputDirectory;
@@ -312,6 +319,9 @@ public class AppBundlerTask extends Task {
 
             executableFile.setExecutable(true, false);
 
+            // Copy localized resources to Resources folder
+            copyResources(resourcesDirectory);
+            
             // Copy runtime to PlugIns folder
             copyRuntime(plugInsDirectory);
 
@@ -328,6 +338,42 @@ public class AppBundlerTask extends Task {
             copyIcon(resourcesDirectory);
         } catch (IOException exception) {
             throw new BuildException(exception);
+        }
+    }
+    
+    private void copyResources(File resourcesDirectory) throws IOException {
+        // Unzip res.zip into resources directory
+        InputStream inputStream = getClass().getResourceAsStream("res.zip");
+        ZipInputStream zipInputStream = new ZipInputStream(inputStream);
+
+        try {
+            ZipEntry zipEntry = zipInputStream.getNextEntry();
+            while (zipEntry != null) {
+                File file = new File(resourcesDirectory, zipEntry.getName());
+
+                if (zipEntry.isDirectory()) {
+                    file.mkdir();
+                } else {
+                    OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(file), BUFFER_SIZE);
+
+                    try {
+                        int b = zipInputStream.read();
+                        while (b != -1) {
+                            outputStream.write(b);
+                            b = zipInputStream.read();
+                        }
+
+                        outputStream.flush();
+                    } finally {
+                        outputStream.close();
+                    }
+
+                }
+
+                zipEntry = zipInputStream.getNextEntry();
+            }
+        } finally {
+            zipInputStream.close();
         }
     }
 
