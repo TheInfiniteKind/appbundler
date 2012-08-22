@@ -35,6 +35,10 @@
 #define JVM_OPTIONS_KEY "JVMOptions"
 #define JVM_ARGUMENTS_KEY "JVMArguments"
 
+#define UNSPECIFIED_ERROR "An unknown error occurred."
+
+#define APP_ROOT_PREFIX "$APP_ROOT"
+
 #define LIBJLI_DYLIB "/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/lib/jli/libjli.dylib"
 
 typedef int (JNICALL *JLI_Launch_t)(int argc, char ** argv,
@@ -59,7 +63,11 @@ int main(int argc, char *argv[]) {
         launch(argv[0]);
         result = 0;
     } @catch (NSException *exception) {
-        NSLog(@"%@: %@", exception, [exception callStackSymbols]);
+        NSAlert *alert = [[NSAlert alloc] init];
+        [alert setAlertStyle:NSCriticalAlertStyle];
+        [alert setMessageText:[exception reason]];
+        [alert runModal];
+
         result = 1;
     }
 
@@ -72,11 +80,8 @@ int launch(char *commandName) {
     // Get the main bundle
     NSBundle *mainBundle = [NSBundle mainBundle];
 
-    // Set the working directory to the main bundle root
-    NSString *mainBundlePath = [mainBundle bundlePath];
-    if (chdir([mainBundlePath UTF8String]) == -1) {
-        [NSException raise:@JAVA_LAUNCH_ERROR format:@"Could not set initial working directory."];
-    }
+    // Set the working directory to the user's home directory
+    chdir([NSHomeDirectory() UTF8String]);
 
     // Get the main bundle's info dictionary
     NSDictionary *infoDictionary = [mainBundle infoDictionary];
@@ -84,43 +89,46 @@ int launch(char *commandName) {
     // Locate the JLI_Launch() function
     NSString *runtime = [infoDictionary objectForKey:@JVM_RUNTIME_KEY];
 
-    JLI_Launch_t jli_LaunchFxnPtr;
+    const char *libjliPath = NULL;
     if (runtime != nil) {
-        NSURL *runtimeBundleURL = [[[NSBundle mainBundle] builtInPlugInsURL] URLByAppendingPathComponent:runtime];
-        CFBundleRef runtimeBundle = CFBundleCreate(NULL, (CFURLRef)runtimeBundleURL);
-
-        NSError *bundleLoadError = nil;
-        Boolean runtimeBundleLoaded = CFBundleLoadExecutableAndReturnError(runtimeBundle, (CFErrorRef *)&bundleLoadError);
-        if (bundleLoadError != nil || !runtimeBundleLoaded) {
-            [NSException raise:@JAVA_LAUNCH_ERROR format:@"Could not load JRE from %@.", bundleLoadError];
-        }
-
-        jli_LaunchFxnPtr = CFBundleGetFunctionPointerForName(runtimeBundle, CFSTR("JLI_Launch"));
+        NSString *runtimePath = [[[NSBundle mainBundle] builtInPlugInsPath] stringByAppendingPathComponent:runtime];
+        libjliPath = [[runtimePath stringByAppendingPathComponent:@"Contents/Home/jre/lib/jli/libjli.dylib"] fileSystemRepresentation];
     } else {
-        void *libJLI = dlopen(LIBJLI_DYLIB, RTLD_LAZY);
-        if (libJLI != NULL) {
-            jli_LaunchFxnPtr = dlsym(libJLI, "JLI_Launch");
-        }
+        libjliPath = LIBJLI_DYLIB;
+    }
+
+    void *libJLI = dlopen(libjliPath, RTLD_LAZY);
+
+    JLI_Launch_t jli_LaunchFxnPtr = NULL;
+    if (libJLI != NULL) {
+        jli_LaunchFxnPtr = dlsym(libJLI, "JLI_Launch");
     }
 
     if (jli_LaunchFxnPtr == NULL) {
-        [NSException raise:@JAVA_LAUNCH_ERROR format:@"Could not get function pointer for JLI_Launch."];
+        [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
+            reason:NSLocalizedString(@"JRELoadError", @UNSPECIFIED_ERROR)
+            userInfo:nil] raise];
     }
 
     // Get the main class name
     NSString *mainClassName = [infoDictionary objectForKey:@JVM_MAIN_CLASS_NAME_KEY];
     if (mainClassName == nil) {
-        [NSException raise:@JAVA_LAUNCH_ERROR format:@"%@ is required.", @JVM_MAIN_CLASS_NAME_KEY];
+        [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
+            reason:NSLocalizedString(@"MainClassNameRequired", @UNSPECIFIED_ERROR)
+            userInfo:nil] raise];
     }
 
     // Set the class path
+    NSString *mainBundlePath = [mainBundle bundlePath];
     NSString *javaPath = [mainBundlePath stringByAppendingString:@"/Contents/Java"];
     NSMutableString *classPath = [NSMutableString stringWithFormat:@"-Djava.class.path=%@/Classes", javaPath];
 
     NSFileManager *defaultFileManager = [NSFileManager defaultManager];
     NSArray *javaDirectoryContents = [defaultFileManager contentsOfDirectoryAtPath:javaPath error:nil];
     if (javaDirectoryContents == nil) {
-        [NSException raise:@JAVA_LAUNCH_ERROR format:@"Could not enumerate Java directory contents."];
+        [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
+            reason:NSLocalizedString(@"JavaDirectoryNotFound", @UNSPECIFIED_ERROR)
+            userInfo:nil] raise];
     }
 
     for (NSString *file in javaDirectoryContents) {
@@ -154,17 +162,19 @@ int launch(char *commandName) {
     argv[i++] = strdup([libraryPath UTF8String]);
 
     for (NSString *option in options) {
+        option = [option stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
         argv[i++] = strdup([option UTF8String]);
     }
 
     argv[i++] = strdup([mainClassName UTF8String]);
 
     for (NSString *argument in arguments) {
+        argument = [argument stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
         argv[i++] = strdup([argument UTF8String]);
     }
 
     // Invoke JLI_Launch()
-    int result = jli_LaunchFxnPtr(argc, argv,
+    return jli_LaunchFxnPtr(argc, argv,
                             0, NULL,
                             0, NULL,
                             "",
@@ -175,9 +185,4 @@ int launch(char *commandName) {
                             FALSE,
                             FALSE,
                             0);
-
-    // Set the working directory to the user's home directory
-    chdir([NSHomeDirectory() UTF8String]);
-
-    return result;
 }
