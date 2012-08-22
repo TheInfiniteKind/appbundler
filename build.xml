@@ -34,6 +34,7 @@ questions.
     <property name="folder.native" value="native"/>
     <property name="folder.bin" value="bin"/>
     <property name="folder.classes" value="${folder.bin}/classes"/>
+    <property name="folder.res" value="res"/>
 
     <!-- Compile target -->
     <target name="compile">
@@ -63,7 +64,6 @@ questions.
             </fileset>
         </copy>
 
-        <!-- TODO Move this to a makefile so we can reference the defines required by JLI_Launch() -->
         <exec executable="${cc}">
             <arg line="${arch64} ${arch32}"/>
             <arg value="-I"/>
@@ -91,6 +91,10 @@ questions.
 
     <!-- Package target -->
     <target name="package" depends="compile">
+        <zip destfile="${ant.project.name}/${folder.classes}/com/oracle/appbundler/res.zip">
+            <fileset dir="${ant.project.name}/${folder.res}"/>
+        </zip>
+
         <jar destfile="${ant.project.name}/${folder.bin}/${ant.project.name}-${version}.jar" index="true">
             <manifest>
                 <attribute name="Implementation-Vendor-Id" value="com.oracle"/>
@@ -101,41 +105,42 @@ questions.
             <fileset dir="${ant.project.name}/${folder.classes}"/>
             <fileset dir="${ant.project.name}/${folder.bin}">
                 <include name="JavaAppLauncher"/>
+                <include name="*.zip"/>
             </fileset>
         </jar>
     </target>
 
     <!-- Test targets -->
-    <target name="test-swingset" depends="package">
+    <target name="test" depends="package">
         <taskdef name="bundleapp" classname="com.oracle.appbundler.AppBundlerTask"
             classpath="${ant.project.name}/${folder.bin}/${ant.project.name}-${version}.jar"/>
 
         <bundleapp outputdirectory="."
-            name="SwingSet2"
-            displayname="SwingSet 2"
-            identifier="com.oracle.javax.swing.SwingSet2"
+            name="Test"
+            displayname="Test"
+            identifier="com.oracle.javafx.swing.Test"
             shortversion="1.0"
             applicationCategory="public.app-category.developer-tools"
-            mainclassname="SwingSet2">
+            mainclassname="com/javafx/main/Main">
             <runtime dir="${env.JAVA_HOME}"/>
-            <classpath file="/Library/Java/Demos/JFC/SwingSet2/SwingSet2.jar"/>
+            <classpath file="${user.home}/bin/javafx-samples-2.2.0/SwingInterop.jar"/>
             <option value="-Dapple.laf.useScreenMenuBar=true"/>
             <argument value="foo=bar"/>
         </bundleapp>
     </target>
 
-    <target name="test-swingset-plugin" depends="package">
+    <target name="test-plugin" depends="package">
         <taskdef name="bundleapp" classname="com.oracle.appbundler.AppBundlerTask"
             classpath="${ant.project.name}/${folder.bin}/${ant.project.name}-${version}.jar"/>
 
         <bundleapp outputdirectory="."
-            name="SwingSet2Plugin"
-            displayname="SwingSet 2 (Plugin)"
-            identifier="com.oracle.javax.swing.SwingSet2Plugin"
+            name="TestPlugin"
+            displayname="Test (Plugin)"
+            identifier="com.oracle.javafx.swing.TestPlugin"
             shortversion="1.0"
             applicationCategory="public.app-category.developer-tools"
-            mainclassname="SwingSet2">
-            <classpath file="/Library/Java/Demos/JFC/SwingSet2/SwingSet2.jar"/>
+            mainclassname="com/javafx/main/Main">
+            <classpath file="${user.home}/bin/javafx-samples-2.2.0/SwingInterop.jar"/>
             <option value="-Dapple.laf.useScreenMenuBar=true"/>
             <argument value="foo=bar"/>
         </bundleapp>
@@ -148,7 +153,7 @@ questions.
             <include name="**/*.html"/>
             <include name="**/*.java"/>
             <include name="**/*.m"/>
-            <include name="**/*.properties"/>
+            <include name="**/*.strings"/>
             <include name="**/*.xml"/>
         </fileset>
         <replaceregexp match="[\t]" replace="    " flags="gm" byline="true">
