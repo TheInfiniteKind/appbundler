@@ -550,7 +550,7 @@ public class AppBundlerTask extends Task {
                 }
                 
                 writeKey(xout, "CFBundleTypeName");
-                writeString(xout, bundleDocument.getIcon());
+                writeString(xout, bundleDocument.getName());
                     
                 writeKey(xout, "CFBundleTypeRole");
                 writeString(xout, bundleDocument.getRole());
