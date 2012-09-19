@@ -12,6 +12,17 @@ with the following changes:
 - Add support for JVMArchs and LSArchitecturePriority keys
 - Allow to specify a custom value for CFBundleVersion 
 - Allow specifying registered file extensions using CFBundleDocumentTypes
+- Pass to the Java application 5 environment variables with the paths of
+  the OSX special folders and whether the application is running in the
+  sandbox.
+
+These are the environment variables passed:
+- LibraryDirectory
+- DocumentsDirectory
+- CachesDirectory
+- ApplicationSupportDirectory
+- SandboxEnabled (the String "true" or "false")
+
 
 Example:
 
