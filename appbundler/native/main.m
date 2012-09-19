@@ -152,14 +152,47 @@ int launch(char *commandName) {
         arguments = [NSArray array];
     }
 
+    // Set OSX special folders
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory,   
+            NSUserDomainMask, YES);                                            
+    NSString *basePath = [paths objectAtIndex:0];                                                                           
+    NSString *libraryDirectory = [NSString stringWithFormat:@"-DLibraryDirectory=%@", basePath];
+
+    paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,           
+            NSUserDomainMask, YES);                                            
+    basePath = [paths objectAtIndex:0];                                                                           
+    NSString *documentsDirectory = [NSString stringWithFormat:@"-DDocumentsDirectory=%@", basePath];
+                                                                               
+    paths = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, 
+            NSUserDomainMask, YES);                                            
+    basePath = [paths objectAtIndex:0];                                                                           
+    NSString *applicationSupportDirectory = [NSString stringWithFormat:@"-DApplicationSupportDirectory=%@", basePath];
+                                                                               
+    paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, 
+            NSUserDomainMask, YES);                                            
+    basePath = [paths objectAtIndex:0];                                                                           
+    NSString *cachesDirectory = [NSString stringWithFormat:@"-DCachesDirectory=%@", basePath];
+
+    NSString *sandboxEnabled = @"true";
+    if ([basePath rangeOfString:@"Containers"].location == NSNotFound) {
+        sandboxEnabled = @"false";
+    }
+    NSString *sandboxEnabledVar = [NSString stringWithFormat:@"-DSandboxEnabled=%@", sandboxEnabled];
+
     // Initialize the arguments to JLI_Launch()
-    int argc = 1 + [options count] + 2 + [arguments count] + 1;
+    // +5 due to the special directories and the sandbox enabled property
+    int argc = 1 + [options count] + 2 + [arguments count] + 1 + 5;
     char *argv[argc];
 
     int i = 0;
     argv[i++] = commandName;
     argv[i++] = strdup([classPath UTF8String]);
     argv[i++] = strdup([libraryPath UTF8String]);
+    argv[i++] = strdup([libraryDirectory UTF8String]);
+    argv[i++] = strdup([documentsDirectory UTF8String]);
+    argv[i++] = strdup([applicationSupportDirectory UTF8String]);
+    argv[i++] = strdup([cachesDirectory UTF8String]);
+    argv[i++] = strdup([sandboxEnabledVar UTF8String]);
 
     for (NSString *option in options) {
         option = [option stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
