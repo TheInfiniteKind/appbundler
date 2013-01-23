@@ -578,6 +578,15 @@ public class AppBundlerTask extends Task {
             xout.writeEndElement();
             xout.writeCharacters("\n");
 
+            // Write Environment
+            writeKey(xout, "LSEnvironment");
+            xout.writeStartElement(DICT_TAG);
+            xout.writeCharacters("\n");
+            writeKey(xout, "LC_CTYPE");
+            writeString(xout, "UTF-8");
+            xout.writeEndElement();
+            xout.writeCharacters("\n");
+
             // Write options
             writeKey(xout, "JVMOptions");
 
