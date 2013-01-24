@@ -1,28 +1,28 @@
 appbundler
 =============
 
-A fork of the Java Application Bundler https://svn.java.net/svn/appbundler~svn
+A fork of the [Java Application Bundler](https://svn.java.net/svn/appbundler~svn) 
 with the following changes:
 
 - The native binary is created as universal (32/64)
-- Fixes icon not showing, linked to bug 
-  http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=7159381 
-  in the JavaAppLauncher.
-- Add classpathref support to bundleapp
-- Add support for JVMArchs and LSArchitecturePriority keys
-- Allow to specify a custom value for CFBundleVersion 
-- Allow specifying registered file extensions using CFBundleDocumentTypes
-- Pass to the Java application 5 environment variables with the paths of
+- Fixes [icon not showing bug](http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=7159381) in `JavaAppLauncher`
+- Adds `LC_CTYPE` environment variable to the `Info.plist` file in order to fix an [issue with `File.exists()` in OpenJDK 7](http://java.net/jira/browse/MACOSX_PORT-165)  **(Contributed by Steve Hannah)**
+- Allows to specify the name of the executable instead of using the default `"JavaAppLauncher"` **(contributed by Karl von Randow)**
+- Adds `classpathref` support to the `bundleapp` task
+- Adds support for `JVMArchs` and `LSArchitecturePriority` keys
+- Allows to specify a custom value for `CFBundleVersion` 
+- Allows specifying registered file extensions using `CFBundleDocumentTypes`
+- Passes to the Java application a set of environment variables with the paths of
   the OSX special folders and whether the application is running in the
-  sandbox.
+  sandbox (see below).
 
-These are the environment variables passed:
+These are the environment variables passed to the JVM:
 
-- LibraryDirectory
-- DocumentsDirectory
-- CachesDirectory
-- ApplicationSupportDirectory
-- SandboxEnabled (the String "true" or "false")
+- `LibraryDirectory`
+- `DocumentsDirectory`
+- `CachesDirectory`
+- `ApplicationSupportDirectory`
+- `SandboxEnabled` (the String `true` or `false`)
 
 
 Example:
@@ -37,6 +37,7 @@ Example:
           outputdirectory="${dist}"
           name="${bundle.name}"
           displayname="${bundle.displayname}"
+          executableName="MyApp"
           identifier="com.company.product"
           shortversion="${version.public}"
           version="${version.internal}"
