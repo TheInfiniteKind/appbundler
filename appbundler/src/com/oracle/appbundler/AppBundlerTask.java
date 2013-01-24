@@ -68,6 +68,7 @@ public class AppBundlerTask extends Task {
     private String displayName = null;
     private String identifier = null;
     private File icon = null;
+    private String executableName = EXECUTABLE_NAME;
 
     private String shortVersion = "1.0";
     private String version = "1.0";
@@ -122,6 +123,10 @@ public class AppBundlerTask extends Task {
 
     public void setIcon(File icon) {
         this.icon = icon;
+    }
+    
+    public void setExecutableName(String executable) {
+    	this.executableName = executable;
     }
 
     public void setShortVersion(String shortVersion) {
@@ -314,8 +319,8 @@ public class AppBundlerTask extends Task {
             writePkgInfo(pkgInfoFile);
 
             // Copy executable to MacOS folder
-            File executableFile = new File(macOSDirectory, EXECUTABLE_NAME);
-            copy(getClass().getResource(executableFile.getName()), executableFile);
+            File executableFile = new File(macOSDirectory, executableName);
+            copy(getClass().getResource(EXECUTABLE_NAME), executableFile);
 
             executableFile.setExecutable(true, false);
 
