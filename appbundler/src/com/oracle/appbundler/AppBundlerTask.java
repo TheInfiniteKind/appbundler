@@ -499,7 +499,7 @@ public class AppBundlerTask extends Task {
 
             // Write bundle properties
             writeProperty(xout, "CFBundleDevelopmentRegion", "English");
-            writeProperty(xout, "CFBundleExecutable", EXECUTABLE_NAME);
+            writeProperty(xout, "CFBundleExecutable", executableName);
             writeProperty(xout, "CFBundleIconFile", (icon == null) ? DEFAULT_ICON_NAME : icon.getName());
             writeProperty(xout, "CFBundleIdentifier", identifier);
             writeProperty(xout, "CFBundleDisplayName", displayName);
