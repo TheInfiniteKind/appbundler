@@ -74,6 +74,7 @@ public class AppBundlerTask extends Task {
     private String version = "1.0";
     private String signature = "????";
     private String copyright = "";
+    private String privileged = null;
 
     private String applicationCategory = null;
 
@@ -144,7 +145,11 @@ public class AppBundlerTask extends Task {
     public void setCopyright(String copyright) {
         this.copyright = copyright;
     }
-
+    
+    public void setPrivileged(String privileged) {
+        this.privileged = privileged;
+    }
+    
     public void setApplicationCategory(String applicationCategory) {
         this.applicationCategory = applicationCategory;
     }
@@ -524,6 +529,10 @@ public class AppBundlerTask extends Task {
             // Write runtime
             if (runtime != null) {
                 writeProperty(xout, "JVMRuntime", runtime.getDir().getParentFile().getParentFile().getName());
+            }
+            
+            if ( privileged != null ) {
+                writeProperty(xout, "JVMRunPrivileged", privileged);
             }
 
             // Write main class name

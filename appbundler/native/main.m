@@ -35,6 +35,8 @@
 #define JVM_OPTIONS_KEY "JVMOptions"
 #define JVM_ARGUMENTS_KEY "JVMArguments"
 
+#define JVM_RUN_PRIVILEGED "JVMRunPrivileged"
+
 #define UNSPECIFIED_ERROR "An unknown error occurred."
 
 #define APP_ROOT_PREFIX "$APP_ROOT"
@@ -86,9 +88,21 @@ int launch(char *commandName) {
     // Get the main bundle's info dictionary
     NSDictionary *infoDictionary = [mainBundle infoDictionary];
 
+    // execute privileged
+    NSString *privileged = [infoDictionary objectForKey:@JVM_RUN_PRIVILEGED];
+    if ( privileged != nil && getuid() != 0 ) {
+        NSDictionary *error = [NSDictionary new];
+        NSString *script =  [NSString stringWithFormat:@"do shell script \"\\\"%@\\\" > /dev/null 2>&1 &\" with administrator privileges", [NSString stringWithCString:commandName encoding:NSASCIIStringEncoding]];
+        NSAppleScript *appleScript = [[NSAppleScript new] initWithSource:script];
+        if ([appleScript executeAndReturnError:&error]) {
+            // This means we successfully elevated the application and can stop in here.
+            return;
+        }
+    }
+    
     // Locate the JLI_Launch() function
     NSString *runtime = [infoDictionary objectForKey:@JVM_RUNTIME_KEY];
-
+    
     const char *libjliPath = NULL;
     if (runtime != nil) {
         NSString *runtimePath = [[[NSBundle mainBundle] builtInPlugInsPath] stringByAppendingPathComponent:runtime];
