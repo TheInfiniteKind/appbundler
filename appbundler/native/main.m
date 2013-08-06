@@ -31,6 +31,7 @@
 #define JAVA_LAUNCH_ERROR "JavaLaunchError"
 
 #define JVM_RUNTIME_KEY "JVMRuntime"
+#define WORKING_DIR "WorkingDir"
 #define JVM_MAIN_CLASS_NAME_KEY "JVMMainClassName"
 #define JVM_OPTIONS_KEY "JVMOptions"
 #define JVM_ARGUMENTS_KEY "JVMArguments"
@@ -82,12 +83,19 @@ int launch(char *commandName) {
     // Get the main bundle
     NSBundle *mainBundle = [NSBundle mainBundle];
 
-    // Set the working directory to the user's home directory
-    chdir([NSHomeDirectory() UTF8String]);
-
     // Get the main bundle's info dictionary
     NSDictionary *infoDictionary = [mainBundle infoDictionary];
-
+    
+    // Set the working directory based on config, defaulting to the user's home directory
+    NSString *workingDir = [infoDictionary objectForKey:@WORKING_DIR];
+    if (workingDir != nil) {
+        workingDir = [workingDir stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
+    } else {
+        workingDir = NSHomeDirectory();
+    }
+    
+    chdir([workingDir UTF8String]);
+           
     // execute privileged
     NSString *privileged = [infoDictionary objectForKey:@JVM_RUN_PRIVILEGED];
     if ( privileged != nil && getuid() != 0 ) {
