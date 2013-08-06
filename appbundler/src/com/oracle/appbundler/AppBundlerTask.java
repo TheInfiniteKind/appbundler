@@ -75,6 +75,7 @@ public class AppBundlerTask extends Task {
     private String signature = "????";
     private String copyright = "";
     private String privileged = null;
+    private String workingDirectory = null;
 
     private String applicationCategory = null;
 
@@ -148,6 +149,10 @@ public class AppBundlerTask extends Task {
     
     public void setPrivileged(String privileged) {
         this.privileged = privileged;
+    }
+    
+    public void setWorkingDirectory(String workingDirectory) {
+        this.workingDirectory = workingDirectory;
     }
     
     public void setApplicationCategory(String applicationCategory) {
@@ -532,6 +537,10 @@ public class AppBundlerTask extends Task {
             
             if ( privileged != null ) {
                 writeProperty(xout, "JVMRunPrivileged", privileged);
+            }
+            
+            if ( workingDirectory != null ) {
+                writeProperty(xout, "WorkingDirectory", workingDirectory);
             }
 
             // Write main class name

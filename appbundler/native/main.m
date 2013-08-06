@@ -31,7 +31,7 @@
 #define JAVA_LAUNCH_ERROR "JavaLaunchError"
 
 #define JVM_RUNTIME_KEY "JVMRuntime"
-#define WORKING_DIR "WorkingDir"
+#define WORKING_DIR "WorkingDirectory"
 #define JVM_MAIN_CLASS_NAME_KEY "JVMMainClassName"
 #define JVM_OPTIONS_KEY "JVMOptions"
 #define JVM_ARGUMENTS_KEY "JVMArguments"
