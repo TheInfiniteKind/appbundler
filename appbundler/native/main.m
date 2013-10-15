@@ -104,7 +104,7 @@ int launch(char *commandName) {
         NSAppleScript *appleScript = [[NSAppleScript new] initWithSource:script];
         if ([appleScript executeAndReturnError:&error]) {
             // This means we successfully elevated the application and can stop in here.
-            return;
+            return 0;
         }
     }
     
