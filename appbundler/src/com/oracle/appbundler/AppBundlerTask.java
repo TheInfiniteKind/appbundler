@@ -76,6 +76,7 @@ public class AppBundlerTask extends Task {
     private String copyright = "";
     private String privileged = null;
     private String workingDirectory = null;
+    private String minimumSystemVersion = null;
 
     private String applicationCategory = null;
 
@@ -153,6 +154,10 @@ public class AppBundlerTask extends Task {
     
     public void setWorkingDirectory(String workingDirectory) {
         this.workingDirectory = workingDirectory;
+    }
+    
+    public void setMinimumSystemVersion(String v){
+        this.minimumSystemVersion = v;
     }
     
     public void setApplicationCategory(String applicationCategory) {
@@ -519,7 +524,9 @@ public class AppBundlerTask extends Task {
             writeProperty(xout, "CFBundleVersion", version);
             writeProperty(xout, "CFBundleSignature", signature);
             writeProperty(xout, "NSHumanReadableCopyright", copyright);
-
+            if ( minimumSystemVersion != null ){
+                writeProperty(xout, "LSMinimumSystemVersion", minimumSystemVersion);
+            }
             if (applicationCategory != null) {
                 writeProperty(xout, "LSApplicationCategoryType", applicationCategory);
             }
