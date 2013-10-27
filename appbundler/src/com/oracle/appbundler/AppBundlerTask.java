@@ -80,6 +80,7 @@ public class AppBundlerTask extends Task {
     private String applicationCategory = null;
 
     private boolean highResolutionCapable = true;
+    private boolean supportsAutomaticGraphicsSwitching = true;
 
     // JVM info properties
     private String mainClassName = null;
@@ -161,6 +162,10 @@ public class AppBundlerTask extends Task {
 
     public void setHighResolutionCapable(boolean highResolutionCapable) {
         this.highResolutionCapable = highResolutionCapable;
+    }
+
+    public void setSupportsAutomaticGraphicsSwitching(boolean supportsAutomaticGraphicsSwitching) {
+        this.supportsAutomaticGraphicsSwitching = supportsAutomaticGraphicsSwitching;
     }
 
     public void setMainClassName(String mainClassName) {
@@ -526,6 +531,12 @@ public class AppBundlerTask extends Task {
 
             if (highResolutionCapable) {
                 writeKey(xout, "NSHighResolutionCapable");
+                writeBoolean(xout, true); 
+                xout.writeCharacters("\n");
+            }
+
+            if (supportsAutomaticGraphicsSwitching) {
+                writeKey(xout, "NSSupportsAutomaticGraphicsSwitching");
                 writeBoolean(xout, true); 
                 xout.writeCharacters("\n");
             }
