@@ -42,8 +42,6 @@
 
 #define APP_ROOT_PREFIX "$APP_ROOT"
 
-#define LIBJLI_DYLIB "/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/lib/jli/libjli.dylib"
-
 typedef int (JNICALL *JLI_Launch_t)(int argc, char ** argv,
                                     int jargc, const char** jargv,
                                     int appclassc, const char** appclassv,
@@ -179,7 +177,16 @@ int launch(char *commandName) {
             NSUserDomainMask, YES);                                            
     NSString *basePath = [paths objectAtIndex:0];                                                                           
     NSString *libraryDirectory = [NSString stringWithFormat:@"-DLibraryDirectory=%@", basePath];
-
+    NSString *containersDirectory = [basePath stringByAppendingPathComponent:@"Containers"];
+    NSString *sandboxEnabled = @"false";
+    BOOL isDir;
+    NSFileManager *fm = [[NSFileManager alloc] init];
+    BOOL containersDirExists = [fm fileExistsAtPath:containersDirectory isDirectory:&isDir];
+    if (containersDirExists && isDir) {
+        sandboxEnabled = @"true";
+    }
+    NSString *sandboxEnabledVar = [NSString stringWithFormat:@"-DSandboxEnabled=%@", sandboxEnabled];
+    
     paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,           
             NSUserDomainMask, YES);                                            
     basePath = [paths objectAtIndex:0];                                                                           
@@ -194,12 +201,6 @@ int launch(char *commandName) {
             NSUserDomainMask, YES);                                            
     basePath = [paths objectAtIndex:0];                                                                           
     NSString *cachesDirectory = [NSString stringWithFormat:@"-DCachesDirectory=%@", basePath];
-
-    NSString *sandboxEnabled = @"true";
-    if ([basePath rangeOfString:@"Containers"].location == NSNotFound) {
-        sandboxEnabled = @"false";
-    }
-    NSString *sandboxEnabledVar = [NSString stringWithFormat:@"-DSandboxEnabled=%@", sandboxEnabled];
 
     // Initialize the arguments to JLI_Launch()
     // +5 due to the special directories and the sandbox enabled property

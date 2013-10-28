@@ -72,12 +72,13 @@ questions.
             <arg value="${env.JAVA_HOME}/include/darwin"/>
             <arg value="-o"/>
             <arg value="${ant.project.name}/${folder.classes}/com/oracle/appbundler/JavaAppLauncher"/>
+            <arg value='-DLIBJLI_DYLIB="${env.JAVA_HOME}/lib/jli/libjli.dylib"'/>
             <arg value="-framework"/>
             <arg value="Cocoa"/>
             <arg value="-F"/>
             <arg value="${env.JAVA_HOME}/../.."/>
             <arg value="-isysroot"/>                                           
-            <arg value="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.7.sdk"/>
+            <arg value="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk"/>
             <arg value="-mmacosx-version-min=10.7"/> 
             <arg value="appbundler/native/main.m"/>
         </exec>
