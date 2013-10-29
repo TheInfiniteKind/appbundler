@@ -37,10 +37,15 @@
 #define JVM_ARGUMENTS_KEY "JVMArguments"
 
 #define JVM_RUN_PRIVILEGED "JVMRunPrivileged"
+#define JVM_RUN_JNLP "JVMJNLPLauncher"
 
 #define UNSPECIFIED_ERROR "An unknown error occurred."
 
 #define APP_ROOT_PREFIX "$APP_ROOT"
+
+#define JAVA_RUNTIME "/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home";
+#define LIBJLI_DY_LIB "lib/jli/libjli.dylib"
+#define DEPLOY_LIB "lib/deploy.jar"
 
 typedef int (JNICALL *JLI_Launch_t)(int argc, char ** argv,
                                     int jargc, const char** jargv,
@@ -54,14 +59,15 @@ typedef int (JNICALL *JLI_Launch_t)(int argc, char ** argv,
                                     jboolean javaw,
                                     jint ergo);
 
-int launch(char *);
+int launch(int inputArgc, char *intputArgv[]);
+const char * tmpFile();
 
 int main(int argc, char *argv[]) {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
     int result;
     @try {
-        launch(argv[0]);
+        launch(argc, argv);
         result = 0;
     } @catch (NSException *exception) {
         NSAlert *alert = [[NSAlert alloc] init];
@@ -77,7 +83,13 @@ int main(int argc, char *argv[]) {
     return result;
 }
 
-int launch(char *commandName) {
+int launch(int inputArgc, char *intputArgv[]) {
+
+    char *commandName = intputArgv[0];
+    
+    const char *const_jargs = NULL;
+    const char *const_appclasspath = NULL;
+    
     // Get the main bundle
     NSBundle *mainBundle = [NSBundle mainBundle];
 
@@ -98,7 +110,18 @@ int launch(char *commandName) {
     NSString *privileged = [infoDictionary objectForKey:@JVM_RUN_PRIVILEGED];
     if ( privileged != nil && getuid() != 0 ) {
         NSDictionary *error = [NSDictionary new];
-        NSString *script =  [NSString stringWithFormat:@"do shell script \"\\\"%@\\\" > /dev/null 2>&1 &\" with administrator privileges", [NSString stringWithCString:commandName encoding:NSASCIIStringEncoding]];
+        
+        int i;
+        NSMutableString *parameters = [NSMutableString stringWithFormat:@""];
+        for(i=0;i<inputArgc;i++) {
+            [parameters appendFormat:@"%@ ", [NSString stringWithCString:intputArgv[i] encoding:NSASCIIStringEncoding]];
+        }
+
+        NSString *script =  [NSString stringWithFormat:@"do shell script \"\\\"%@\\\"\" with administrator privileges", parameters];
+        
+        script =  [NSString stringWithFormat:@"do shell script \"\\\"%@\\\" > /dev/null 2>&1 &\" with administrator privileges", [NSString stringWithCString:commandName encoding:NSASCIIStringEncoding]];
+        
+        // NSLog(@"script: %@", script);
         NSAppleScript *appleScript = [[NSAppleScript new] initWithSource:script];
         if ([appleScript executeAndReturnError:&error]) {
             // This means we successfully elevated the application and can stop in here.
@@ -108,14 +131,16 @@ int launch(char *commandName) {
     
     // Locate the JLI_Launch() function
     NSString *runtime = [infoDictionary objectForKey:@JVM_RUNTIME_KEY];
-    
+
     const char *libjliPath = NULL;
     if (runtime != nil) {
-        NSString *runtimePath = [[[NSBundle mainBundle] builtInPlugInsPath] stringByAppendingPathComponent:runtime];
-        libjliPath = [[runtimePath stringByAppendingPathComponent:@"Contents/Home/jre/lib/jli/libjli.dylib"] fileSystemRepresentation];
+        runtime = [[[[NSBundle mainBundle] builtInPlugInsPath] stringByAppendingPathComponent:runtime] stringByAppendingPathComponent:@"jre"];
     } else {
-        libjliPath = LIBJLI_DYLIB;
+        runtime = @JAVA_RUNTIME;
     }
+
+    libjliPath = [[runtime stringByAppendingPathComponent:@LIBJLI_DY_LIB] fileSystemRepresentation];
+    const_appclasspath = [[runtime stringByAppendingPathComponent:@DEPLOY_LIB] fileSystemRepresentation];
 
     void *libJLI = dlopen(libjliPath, RTLD_LAZY);
 
@@ -129,21 +154,82 @@ int launch(char *commandName) {
             reason:NSLocalizedString(@"JRELoadError", @UNSPECIFIED_ERROR)
             userInfo:nil] raise];
     }
+    
+    NSFileManager *defaultFileManager = [NSFileManager defaultManager];
 
+    // Set the class path
+    NSString *mainBundlePath = [mainBundle bundlePath];
+    NSString *javaPath = [mainBundlePath stringByAppendingString:@"/Contents/Java"];
+
+    // Get the VM options
+    NSMutableArray *options = [[infoDictionary objectForKey:@JVM_OPTIONS_KEY] mutableCopy];
+    if (options == nil) {
+        options = [NSMutableArray array];
+    }
+    
+    // Get the application arguments
+    NSMutableArray *arguments = [[infoDictionary objectForKey:@JVM_ARGUMENTS_KEY] mutableCopy];
+    if (arguments == nil) {
+        arguments = [NSMutableArray array];
+    }
+    
+    // modifyable classPath
+    NSMutableString *classPath = [NSMutableString stringWithFormat:@"-Djava.class.path=%@/Classes", javaPath];
+
+    // Set the library path
+    NSString *libraryPath = [NSString stringWithFormat:@"-Djava.library.path=%@/Contents/MacOS", mainBundlePath];
+    
+
+    // check for jnlp launcher name
+    NSString *jnlplauncher = [infoDictionary objectForKey:@JVM_RUN_JNLP];
     // Get the main class name
     NSString *mainClassName = [infoDictionary objectForKey:@JVM_MAIN_CLASS_NAME_KEY];
+
+    if ( jnlplauncher != nil ) {
+
+        // JNLP Launcher found, need to modify quite a bit now
+        [options addObject:@"-classpath"];
+        [options addObject:[NSString stringWithFormat:@"%s", const_appclasspath]];
+        
+        classPath = nil;
+
+        // Main Class is javaws
+        mainClassName=@"com.sun.javaws.Main";
+        
+        // Optional stuff that javaws would do as well
+        [options addObject:@"-Dsun.awt.warmup=true"];
+        [options addObject:@"-Xverify:remote"];
+        [options addObject:@"-Djnlpx.remove=true"];
+        [options addObject:@"-DtrustProxy=true"];
+        [options addObject:[NSString stringWithFormat:@"-Djava.security.policy=file:%@/lib/security/javaws.policy", runtime]];
+        [options addObject:[NSString stringWithFormat:@"-Xbootclasspath/a:%@/lib/javaws.jar:%@/lib/deploy.jar:%@/lib/plugin.jar", runtime, runtime, runtime]];
+
+        // Argument that javaws does also
+        [arguments addObject:@"-noWebStart"];
+        
+        // Copy the jnlp to a temporary location
+        NSError *copyerror = nil;
+        NSString *tempFileName = [NSString stringWithCString:tmpFile() encoding:NSASCIIStringEncoding];
+        // File now exists.
+        [defaultFileManager removeItemAtPath:tempFileName error:NULL];
+        [defaultFileManager copyItemAtURL:[NSURL fileURLWithPath:[javaPath stringByAppendingPathComponent:jnlplauncher]] toURL:[NSURL fileURLWithPath:tempFileName] error:&copyerror];
+        if ( copyerror != nil ) {
+            NSLog(@"Error: %@", copyerror);
+            [[NSException exceptionWithName:@"Error while copying JNLP File"
+                                     reason:@"File copy error"
+                                   userInfo:copyerror.userInfo] raise];
+        }
+        
+        // Add the jnlp as argument so that javaws.Main can read and delete it
+        [arguments addObject:tempFileName];
+        
+    } else
     if (mainClassName == nil) {
         [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
             reason:NSLocalizedString(@"MainClassNameRequired", @UNSPECIFIED_ERROR)
             userInfo:nil] raise];
     }
 
-    // Set the class path
-    NSString *mainBundlePath = [mainBundle bundlePath];
-    NSString *javaPath = [mainBundlePath stringByAppendingString:@"/Contents/Java"];
-    NSMutableString *classPath = [NSMutableString stringWithFormat:@"-Djava.class.path=%@/Classes", javaPath];
-
-    NSFileManager *defaultFileManager = [NSFileManager defaultManager];
     NSArray *javaDirectoryContents = [defaultFileManager contentsOfDirectoryAtPath:javaPath error:nil];
     if (javaDirectoryContents == nil) {
         [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
@@ -155,21 +241,6 @@ int launch(char *commandName) {
         if ([file hasSuffix:@".jar"]) {
             [classPath appendFormat:@":%@/%@", javaPath, file];
         }
-    }
-
-    // Set the library path
-    NSString *libraryPath = [NSString stringWithFormat:@"-Djava.library.path=%@/Contents/MacOS", mainBundlePath];
-
-    // Get the VM options
-    NSArray *options = [infoDictionary objectForKey:@JVM_OPTIONS_KEY];
-    if (options == nil) {
-        options = [NSArray array];
-    }
-
-    // Get the application arguments
-    NSArray *arguments = [infoDictionary objectForKey:@JVM_ARGUMENTS_KEY];
-    if (arguments == nil) {
-        arguments = [NSArray array];
     }
 
     // Set OSX special folders
@@ -204,12 +275,16 @@ int launch(char *commandName) {
 
     // Initialize the arguments to JLI_Launch()
     // +5 due to the special directories and the sandbox enabled property
-    int argc = 1 + [options count] + 2 + [arguments count] + 1 + 5;
+    int argc = 1 + [options count] + 2 + [arguments count] + 1 + 4 + (classPath != nil?1:0);
     char *argv[argc];
 
     int i = 0;
     argv[i++] = commandName;
-    argv[i++] = strdup([classPath UTF8String]);
+    
+    if ( classPath != nil ) {
+        argv[i++] = strdup([classPath UTF8String]);
+    }
+
     argv[i++] = strdup([libraryPath UTF8String]);
     argv[i++] = strdup([libraryDirectory UTF8String]);
     argv[i++] = strdup([documentsDirectory UTF8String]);
@@ -228,17 +303,50 @@ int launch(char *commandName) {
         argument = [argument stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
         argv[i++] = strdup([argument UTF8String]);
     }
-
+    
+    //for (int i; i < argc; i++)
+    //    NSLog(@"%s", argv[i]);
+    
     // Invoke JLI_Launch()
     return jli_LaunchFxnPtr(argc, argv,
-                            0, NULL,
-                            0, NULL,
+                            sizeof(&const_jargs) / sizeof(char *), &const_jargs,
+                            sizeof(&const_appclasspath) / sizeof(char *), &const_appclasspath,
                             "",
                             "",
                             "java",
                             "java",
-                            FALSE,
+                            (const_jargs != NULL) ? JNI_TRUE : JNI_FALSE,
                             FALSE,
                             FALSE,
                             0);
+}
+
+/*
+ * Convenient Method to create a temporary file - this will be deleted by the JLI_Launch
+ */
+const char * tmpFile() {
+    NSString *tempFileTemplate = [NSTemporaryDirectory()
+                                  stringByAppendingPathComponent:@"jnlpFile.XXXXXX.jnlp"];
+    
+    const char *tempFileTemplateCString = [tempFileTemplate fileSystemRepresentation];
+    
+    char *tempFileNameCString = (char *)malloc(strlen(tempFileTemplateCString) + 1);
+    strcpy(tempFileNameCString, tempFileTemplateCString);
+    int fileDescriptor = mkstemps(tempFileNameCString, 5);
+    
+    // no need to keep it open
+    close(fileDescriptor);
+    
+    if (fileDescriptor == -1) {
+        NSLog(@"Error while creating tmp file");
+        return nil;
+    }
+    
+    NSString *tempFileName = [[NSFileManager defaultManager]
+                              stringWithFileSystemRepresentation:tempFileNameCString
+                              length:strlen(tempFileNameCString)];
+    
+    free(tempFileNameCString);
+    
+    return [tempFileName fileSystemRepresentation];
 }

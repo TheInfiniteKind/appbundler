@@ -85,13 +85,14 @@ public class AppBundlerTask extends Task {
 
     // JVM info properties
     private String mainClassName = null;
+    private String jnlpLauncherName = null;
     private FileSet runtime = null;
-    private ArrayList<FileSet> classPath = new ArrayList<>();
-    private ArrayList<FileSet> libraryPath = new ArrayList<>();
-    private ArrayList<String> options = new ArrayList<>();
-    private ArrayList<String> arguments = new ArrayList<>();
-    private ArrayList<String> architectures = new ArrayList<>();
-    private ArrayList<BundleDocument> bundleDocuments = new ArrayList<>();
+    private ArrayList<FileSet> classPath = new ArrayList<FileSet>();
+    private ArrayList<FileSet> libraryPath = new ArrayList<FileSet>();
+    private ArrayList<String> options = new ArrayList<String>();
+    private ArrayList<String> arguments = new ArrayList<String>();
+    private ArrayList<String> architectures = new ArrayList<String>();
+    private ArrayList<BundleDocument> bundleDocuments = new ArrayList<BundleDocument>();
     
     private Reference classPathRef;
 
@@ -176,8 +177,12 @@ public class AppBundlerTask extends Task {
     public void setMainClassName(String mainClassName) {
         this.mainClassName = mainClassName;
     }
-
-    public void addConfiguredRuntime(FileSet runtime) throws BuildException {
+    
+    public void setJnlpLauncherName(String jnlpLauncherName) {
+        this.jnlpLauncherName = jnlpLauncherName;
+    }
+    
+   public void addConfiguredRuntime(FileSet runtime) throws BuildException {
         if (this.runtime != null) {
             throw new BuildException("Runtime already specified.");
         }
@@ -300,8 +305,8 @@ public class AppBundlerTask extends Task {
             throw new IllegalStateException("Copyright is required.");
         }
 
-        if (mainClassName == null) {
-            throw new IllegalStateException("Main class name is required.");
+        if (jnlpLauncherName == null && mainClassName == null) {
+            throw new IllegalStateException("Main class name or JNLP launcher name is required.");
         }
 
         // Create the app bundle
@@ -561,9 +566,13 @@ public class AppBundlerTask extends Task {
                 writeProperty(xout, "WorkingDirectory", workingDirectory);
             }
 
-            // Write main class name
-            writeProperty(xout, "JVMMainClassName", mainClassName);
-
+            if ( jnlpLauncherName != null ) {
+                // Write jnlp launcher name
+                writeProperty(xout, "JVMJNLPLauncher", jnlpLauncherName);
+            } else {
+                // Write main class name
+                writeProperty(xout, "JVMMainClassName", mainClassName);
+            }
 
             // Write CFBundleDocument entries
             writeKey(xout, "CFBundleDocumentTypes");
