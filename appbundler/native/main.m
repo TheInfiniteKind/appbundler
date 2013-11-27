@@ -34,6 +34,7 @@
 #define WORKING_DIR "WorkingDirectory"
 #define JVM_MAIN_CLASS_NAME_KEY "JVMMainClassName"
 #define JVM_OPTIONS_KEY "JVMOptions"
+#define JVM_DEFAULT_OPTIONS_KEY "JVMDefaultOptions"
 #define JVM_ARGUMENTS_KEY "JVMArguments"
 
 #define JVM_RUN_PRIVILEGED "JVMRunPrivileged"
@@ -166,6 +167,32 @@ int launch(char *commandName) {
         options = [NSArray array];
     }
 
+    // Get the VM default options
+    NSArray *defaultOptions = [NSArray array];
+    NSDictionary *defaultOptionsDict = [infoDictionary objectForKey:@JVM_DEFAULT_OPTIONS_KEY];
+    if (defaultOptionsDict != nil) {
+        NSMutableDictionary *defaults = [NSMutableDictionary dictionaryWithDictionary: defaultOptionsDict];
+        // Replace default options with user specific options, if available
+        NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+        // Create special key that should be used by Java's java.util.Preferences impl
+        // Requires us to use "/" + bundleIdentifier.replace('.', '/') + "/JVMOptions/" as node on the Java side
+        // Beware: bundleIdentifiers shorter than 3 segments are placed in a different file!
+        // See java/util/prefs/MacOSXPreferences.java of OpenJDK for details
+        NSString *bundleDictionaryKey = [mainBundle bundleIdentifier];
+        bundleDictionaryKey = [bundleDictionaryKey stringByReplacingOccurrencesOfString:@"." withString:@"/"];
+        bundleDictionaryKey = [NSString stringWithFormat: @"/%@/", bundleDictionaryKey];
+
+        NSDictionary *bundleDictionary = [userDefaults dictionaryForKey: bundleDictionaryKey];
+        if (bundleDictionary != nil) {
+            NSDictionary *jvmOptionsDictionary = [bundleDictionary objectForKey: @"JVMOptions/"];
+            for (NSString *key in jvmOptionsDictionary) {
+                NSString *value = [jvmOptionsDictionary objectForKey:key];
+                [defaults setObject: value forKey: key];
+            }
+        }
+        defaultOptions = [defaults allValues];
+    }
+
     // Get the application arguments
     NSArray *arguments = [infoDictionary objectForKey:@JVM_ARGUMENTS_KEY];
     if (arguments == nil) {
@@ -204,7 +231,7 @@ int launch(char *commandName) {
 
     // Initialize the arguments to JLI_Launch()
     // +5 due to the special directories and the sandbox enabled property
-    int argc = 1 + [options count] + 2 + [arguments count] + 1 + 5;
+    int argc = 1 + [options count] + [defaultOptions count] + 2 + [arguments count] + 1 + 5;
     char *argv[argc];
 
     int i = 0;
@@ -220,6 +247,13 @@ int launch(char *commandName) {
     for (NSString *option in options) {
         option = [option stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
         argv[i++] = strdup([option UTF8String]);
+        NSLog(@"Option: %@",option);
+    }
+
+    for (NSString *defaultOption in defaultOptions) {
+        defaultOption = [defaultOption stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
+        argv[i++] = strdup([defaultOption UTF8String]);
+        NSLog(@"DefaultOption: %@",defaultOption);
     }
 
     argv[i++] = strdup([mainClassName UTF8String]);

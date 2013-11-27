@@ -15,6 +15,7 @@ with the following changes:
 - Passes to the Java application a set of environment variables with the paths of
   the OSX special folders and whether the application is running in the
   sandbox (see below).
+- Allows overriding of passed JVM options by the bundled app itself via java.util.Preferences **(contributed by Hendrik Schreiber)**
 
 These are the environment variables passed to the JVM:
 
@@ -80,6 +81,6 @@ Example:
           <option value="-Dcom.apple.smallTabs=true"/>
           <option value="-Dfile.encoding=UTF-8"/>
 
-          <option value="-Xmx1024M"/>
+          <option value="-Xmx1024M" name="Xmx"/>
       </bundleapp>
     </target>
