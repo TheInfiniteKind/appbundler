@@ -137,6 +137,23 @@ Entries will be copied to the <tt>Contents/MacOS/</tt> folder of the generated b
 
 <h4>option</h4>
 <p>Specifies a command-line option to be passed to the JVM at startup.</p>
+<p>Options may be named, which allows the bundled Java program
+itself to override the option (e.g. to adjust heap settings). Changes will take effect upon restart of the
+application. Assuming your <tt>CFBundleIdentifier</tt> (settable via the attribute <tt>identifier</tt>)
+is <tt>com.oracle.appbundler</tt>. Then you can override a named option by calling
+<xmp>   import java.util.prefs.Preferences;
+   [...]
+   Preferences jvmOptions = Preferences.userRoot().node("/com/oracle/appbundler/JVMOptions");
+   jvmOptions.put("name", "value"); // use option name and desired value here
+   jvmOptions.flush();</xmp>
+The corresponding entries will be stored in a file called
+<tt>~/Library/Preferences/com.oracle.appbundler.plist</tt>. To manipulate the file
+without Java's <tt>Preferences</tt> from the command line, you should use the tool
+<a href="https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man1/defaults.1.html">defaults</a>.
+For example, to add an entry via the command line, use:
+<xmp>   defaults write com.oracle.appbundler /com/oracle/appbundler/ -dict-add JVMOptions/ '{"name"="value";}'</xmp>
+Of named options, only the value is passed to the JVM, not the name. The name merely serves as identifier.
+</p>
 <table border="1" cellpadding="2" cellspacing="0">
   <tr>
     <td valign="top"><b>Attribute</b></td>
@@ -147,6 +164,11 @@ Entries will be copied to the <tt>Contents/MacOS/</tt> folder of the generated b
     <td valign="top">value</td>
     <td valign="top">The option value.</td>
     <td align="center" valign="top">Yes</td>
+  </tr>
+  <tr>
+    <td valign="top">name</td>
+    <td valign="top">The option name.</td>
+    <td align="center" valign="top">No</td>
   </tr>
 </table>
 

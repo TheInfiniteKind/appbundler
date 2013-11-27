@@ -88,7 +88,7 @@ public class AppBundlerTask extends Task {
     private FileSet runtime = null;
     private ArrayList<FileSet> classPath = new ArrayList<>();
     private ArrayList<FileSet> libraryPath = new ArrayList<>();
-    private ArrayList<String> options = new ArrayList<>();
+    private ArrayList<Option> options = new ArrayList<>();
     private ArrayList<String> arguments = new ArrayList<>();
     private ArrayList<String> architectures = new ArrayList<>();
     private ArrayList<BundleDocument> bundleDocuments = new ArrayList<>();
@@ -224,7 +224,7 @@ public class AppBundlerTask extends Task {
             throw new BuildException("Value is required.");
         }
 
-        options.add(value);
+        options.add(option);
     }
 
     public void addConfiguredArgument(Argument argument) throws BuildException {
@@ -633,8 +633,24 @@ public class AppBundlerTask extends Task {
             xout.writeStartElement(ARRAY_TAG);
             xout.writeCharacters("\n");
 
-            for (String option : options) {
-                writeString(xout, option);
+            for (Option option : options) {
+                if (option.getName() == null) writeString(xout, option.getValue());
+            }
+
+            xout.writeEndElement();
+            xout.writeCharacters("\n");
+
+            // Write default options
+            writeKey(xout, "JVMDefaultOptions");
+
+            xout.writeStartElement(DICT_TAG);
+            xout.writeCharacters("\n");
+
+            for (Option option : options) {
+                if (option.getName() != null) {
+                    writeKey(xout, option.getName());
+                    writeString(xout, option.getValue());
+                }
             }
 
             xout.writeEndElement();
