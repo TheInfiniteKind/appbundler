@@ -247,13 +247,11 @@ int launch(char *commandName) {
     for (NSString *option in options) {
         option = [option stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
         argv[i++] = strdup([option UTF8String]);
-        NSLog(@"Option: %@",option);
     }
 
     for (NSString *defaultOption in defaultOptions) {
         defaultOption = [defaultOption stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
         argv[i++] = strdup([defaultOption UTF8String]);
-        NSLog(@"DefaultOption: %@",defaultOption);
     }
 
     argv[i++] = strdup([mainClassName UTF8String]);
