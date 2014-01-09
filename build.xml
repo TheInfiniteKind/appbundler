@@ -64,20 +64,25 @@ questions.
             </fileset>
         </copy>
 
+        <exec executable="/usr/libexec/java_home" outputproperty="libexec_javahome" />
+        <condition property="javahome" value="${env.JAVA_HOME}" else="${libexec_javahome}">
+            <isset property="env.JAVA_HOME"/>
+        </condition>
+
         <exec executable="${cc}">
             <arg line="${arch64} ${arch32}"/>
             <arg value="-I"/>
-            <arg value="${env.JAVA_HOME}/include"/>
+            <arg value="${javahome}/include"/>
             <arg value="-I"/>
-            <arg value="${env.JAVA_HOME}/include/darwin"/>
+            <arg value="${javahome}/include/darwin"/>
             <arg value="-o"/>
             <arg value="${ant.project.name}/${folder.classes}/com/oracle/appbundler/JavaAppLauncher"/>
-            <arg value='-DLIBJLI_DYLIB="${env.JAVA_HOME}/lib/jli/libjli.dylib"'/>
+            <arg value='-DLIBJLI_DYLIB="${javahome}/lib/jli/libjli.dylib"'/>
             <arg value="-framework"/>
             <arg value="Cocoa"/>
             <arg value="-F"/>
-            <arg value="${env.JAVA_HOME}/../.."/>
-            <arg value="-isysroot"/>                                           
+            <arg value="${javahome}/../.."/>
+            <arg value="-isysroot"/>
             <arg value="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk"/>
             <arg value="-mmacosx-version-min=10.7"/> 
             <arg value="appbundler/native/main.m"/>
