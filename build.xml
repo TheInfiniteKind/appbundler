@@ -77,7 +77,7 @@ questions.
             <arg value="${javahome}/include/darwin"/>
             <arg value="-o"/>
             <arg value="${ant.project.name}/${folder.classes}/com/oracle/appbundler/JavaAppLauncher"/>
-            <arg value='-DLIBJLI_DYLIB="${javahome}/lib/jli/libjli.dylib"'/>
+            <arg value='-DLIBJLI_DYLIB="${javahome}/jre/lib/jli/libjli.dylib"'/>
             <arg value="-framework"/>
             <arg value="Cocoa"/>
             <arg value="-F"/>
