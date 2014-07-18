@@ -77,11 +77,13 @@ public class AppBundlerTask extends Task {
     private String privileged = null;
     private String workingDirectory = null;
     private String minimumSystemVersion = null;
+    private String registeredProtocol = null;
 
     private String applicationCategory = null;
 
     private boolean highResolutionCapable = true;
     private boolean supportsAutomaticGraphicsSwitching = true;
+    private boolean hideDockIcon = false;
 
     // JVM info properties
     private String mainClassName = null;
@@ -161,6 +163,10 @@ public class AppBundlerTask extends Task {
         this.minimumSystemVersion = v;
     }
     
+    public void setRegisteredProtocol(String s){
+        this.registeredProtocol = s;
+    }
+    
     public void setApplicationCategory(String applicationCategory) {
         this.applicationCategory = applicationCategory;
     }
@@ -168,7 +174,11 @@ public class AppBundlerTask extends Task {
     public void setHighResolutionCapable(boolean highResolutionCapable) {
         this.highResolutionCapable = highResolutionCapable;
     }
-
+    
+    public void setHideDockIcon(boolean hideDock) {
+        this.hideDockIcon = hideDock;
+    }
+    
     public void setSupportsAutomaticGraphicsSwitching(boolean supportsAutomaticGraphicsSwitching) {
         this.supportsAutomaticGraphicsSwitching = supportsAutomaticGraphicsSwitching;
     }
@@ -535,7 +545,11 @@ public class AppBundlerTask extends Task {
             if (applicationCategory != null) {
                 writeProperty(xout, "LSApplicationCategoryType", applicationCategory);
             }
-
+            if(hideDockIcon){
+                writeKey(xout, "LSUIElement");
+                writeBoolean(xout, true); 
+                xout.writeCharacters("\n");
+            }
             if (highResolutionCapable) {
                 writeKey(xout, "NSHighResolutionCapable");
                 writeBoolean(xout, true); 
@@ -545,6 +559,26 @@ public class AppBundlerTask extends Task {
             if (supportsAutomaticGraphicsSwitching) {
                 writeKey(xout, "NSSupportsAutomaticGraphicsSwitching");
                 writeBoolean(xout, true); 
+                xout.writeCharacters("\n");
+            }
+            if(registeredProtocol != null){
+                writeKey(xout, "CFBundleURLTypes");
+                xout.writeStartElement(ARRAY_TAG);
+                xout.writeCharacters("\n");
+                xout.writeStartElement(DICT_TAG);
+                xout.writeCharacters("\n");
+                
+                writeProperty(xout, "CFBundleURLName", identifier);
+                writeKey(xout, "CFBundleURLSchemes");
+                xout.writeStartElement(ARRAY_TAG);
+                xout.writeCharacters("\n");
+                    writeString(xout, registeredProtocol);
+                xout.writeEndElement();
+                xout.writeCharacters("\n");
+                
+                xout.writeEndElement();
+                xout.writeCharacters("\n");
+                xout.writeEndElement();
                 xout.writeCharacters("\n");
             }
 
