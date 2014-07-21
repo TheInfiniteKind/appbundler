@@ -76,8 +76,7 @@ public class AppBundlerTask extends Task {
     private String copyright = "";
     private String privileged = null;
     private String workingDirectory = null;
-    private String minimumSystemVersion = null;
-    private String registeredProtocol = null;
+    private String minimumSystemVersion = null;    
 
     private String applicationCategory = null;
 
@@ -93,6 +92,7 @@ public class AppBundlerTask extends Task {
     private ArrayList<Option> options = new ArrayList<>();
     private ArrayList<String> arguments = new ArrayList<>();
     private ArrayList<String> architectures = new ArrayList<>();
+    private ArrayList<String> registeredProtocols = new ArrayList<>();
     private ArrayList<BundleDocument> bundleDocuments = new ArrayList<>();
     
     private Reference classPathRef;
@@ -162,11 +162,7 @@ public class AppBundlerTask extends Task {
     public void setMinimumSystemVersion(String v){
         this.minimumSystemVersion = v;
     }
-    
-    public void setRegisteredProtocol(String s){
-        this.registeredProtocol = s;
-    }
-    
+        
     public void setApplicationCategory(String applicationCategory) {
         this.applicationCategory = applicationCategory;
     }
@@ -245,6 +241,15 @@ public class AppBundlerTask extends Task {
         }
 
         arguments.add(value);
+    }
+    public void addConfiguredScheme(Argument argument) throws BuildException {
+        String value = argument.getValue();
+
+        if (value == null) {
+            throw new BuildException("Value is required.");
+        }
+
+        this.registeredProtocols.add(value);
     }
 
     public void addConfiguredArch(Architecture architecture) throws BuildException {
@@ -561,7 +566,7 @@ public class AppBundlerTask extends Task {
                 writeBoolean(xout, true); 
                 xout.writeCharacters("\n");
             }
-            if(registeredProtocol != null){
+            if(registeredProtocols.size() > 0){
                 writeKey(xout, "CFBundleURLTypes");
                 xout.writeStartElement(ARRAY_TAG);
                 xout.writeCharacters("\n");
@@ -572,7 +577,9 @@ public class AppBundlerTask extends Task {
                 writeKey(xout, "CFBundleURLSchemes");
                 xout.writeStartElement(ARRAY_TAG);
                 xout.writeCharacters("\n");
-                    writeString(xout, registeredProtocol);
+                for(String scheme:registeredProtocols){
+                    writeString(xout, scheme);
+                }
                 xout.writeEndElement();
                 xout.writeCharacters("\n");
                 
