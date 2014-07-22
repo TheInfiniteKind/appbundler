@@ -43,6 +43,9 @@
 
 #define APP_ROOT_PREFIX "$APP_ROOT"
 
+#define JRE_JAVA "/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/bin/java"
+#define JRE_DYLIB "/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/lib/jli/libjli.dylib"
+
 typedef int (JNICALL *JLI_Launch_t)(int argc, char ** argv,
                                     int jargc, const char** jargv,
                                     int appclassc, const char** appclassv,
@@ -56,6 +59,7 @@ typedef int (JNICALL *JLI_Launch_t)(int argc, char ** argv,
                                     jint ergo);
 
 int launch(char *);
+NSString * findDylib ( );
 
 int main(int argc, char *argv[]) {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -110,12 +114,21 @@ int launch(char *commandName) {
     // Locate the JLI_Launch() function
     NSString *runtime = [infoDictionary objectForKey:@JVM_RUNTIME_KEY];
     
+    NSString *javaDylib;
+    if (runtime != nil)
+    {
+        NSString *runtimePath = [[mainBundle builtInPlugInsPath] stringByAppendingPathComponent:runtime];
+        javaDylib = [runtimePath stringByAppendingPathComponent:@"Contents/Home/jre/lib/jli/libjli.dylib"];
+    }
+    else
+    {
+        javaDylib = findDylib ( );
+    }
+
     const char *libjliPath = NULL;
-    if (runtime != nil) {
-        NSString *runtimePath = [[[NSBundle mainBundle] builtInPlugInsPath] stringByAppendingPathComponent:runtime];
-        libjliPath = [[runtimePath stringByAppendingPathComponent:@"Contents/Home/jre/lib/jli/libjli.dylib"] fileSystemRepresentation];
-    } else {
-        libjliPath = LIBJLI_DYLIB;
+    if (javaDylib != nil)
+    {
+        libjliPath = [javaDylib fileSystemRepresentation];
     }
 
     void *libJLI = dlopen(libjliPath, RTLD_LAZY);
@@ -275,4 +288,118 @@ int launch(char *commandName) {
                             FALSE,
                             FALSE,
                             0);
+}
+
+/**
+ *  Searches for a JRE 1.7 or 1.8 dylib.
+ *  First checks the "usual" JRE location, and failing that looks for a JDK.
+ */
+NSString * findDylib ( )
+{
+    NSLog (@"Searching for a JRE.");
+
+//  Try the "java -version" command and see if we get a 1.7 or 1.8 response (note 
+//  that for unknown but ancient reasons, the result is output to stderr). If we
+//  do then return address for dylib that should be in the JRE package.
+    @try
+    {
+        NSTask *task = [[[NSTask alloc] init] autorelease];
+        [task setLaunchPath:@JRE_JAVA];
+        
+        NSArray *args = [NSArray arrayWithObjects: @"-version", nil];
+        [task setArguments:args];
+        
+        NSPipe *stdout = [NSPipe pipe];
+        [task setStandardOutput:stdout];
+        
+        NSPipe *stderr = [NSPipe pipe];
+        [task setStandardError:stderr];
+        
+        [task setStandardInput:[NSPipe pipe]];
+        
+        NSFileHandle *outHandle = [stdout fileHandleForReading];
+        NSFileHandle *errHandle = [stderr fileHandleForReading];
+        
+        [task launch];
+        [task waitUntilExit];
+        [task release];
+        
+        NSData *data1 = [outHandle readDataToEndOfFile];
+        NSData *data2 = [errHandle readDataToEndOfFile];
+        
+        NSString *outRead = [[NSString alloc] initWithData:data1
+                                                  encoding:NSUTF8StringEncoding];
+        NSString *errRead = [[NSString alloc] initWithData:data2
+                                                  encoding:NSUTF8StringEncoding];
+    
+        if ( errRead != nil)
+        {
+            if ( [errRead rangeOfString:@"java version \"1.7."].location != NSNotFound
+                || [errRead rangeOfString:@"java version \"1.8."].location != NSNotFound)
+            {
+                return @JRE_DYLIB;
+            }
+        }
+    }
+    @catch (NSException *exception)
+    {
+        NSLog (@"JRE search exception: '%@'", [exception reason]);
+    }
+
+    NSLog (@"Could not find a JRE. Will look for a JDK.");
+
+//  Having failed to find a JRE in the usual location, see if a JDK is installed
+//  (probably in /Library/Java/JavaVirtualMachines). If so, return address of
+//  dylib in the JRE within the JDK.
+    @try
+    {
+        NSTask *task = [[[NSTask alloc] init] autorelease];
+        [task setLaunchPath:@"/usr/libexec/java_home"];
+
+        NSArray *args = [NSArray arrayWithObjects: @"-v", @"1.7+", nil];
+        [task setArguments:args];
+
+        NSPipe *stdout = [NSPipe pipe];
+        [task setStandardOutput:stdout];
+
+        NSPipe *stderr = [NSPipe pipe];
+        [task setStandardError:stderr];
+
+        [task setStandardInput:[NSPipe pipe]];
+
+        NSFileHandle *outHandle = [stdout fileHandleForReading];
+        NSFileHandle *errHandle = [stderr fileHandleForReading];
+
+        [task launch];
+        [task waitUntilExit];
+        [task release];
+
+        NSData *data1 = [outHandle readDataToEndOfFile];
+        NSData *data2 = [errHandle readDataToEndOfFile];
+
+        NSString *outRead = [[NSString alloc] initWithData:data1
+                                                    encoding:NSUTF8StringEncoding];
+        NSString *errRead = [[NSString alloc] initWithData:data2
+                                                    encoding:NSUTF8StringEncoding];
+
+        if ( errRead != nil
+                && [errRead rangeOfString:@"Unable"].location != NSNotFound )
+        {
+            NSLog (@"No JDK 1.7 or later found.");
+            return nil;
+        }
+
+        if ( [outRead rangeOfString:@"jdk1.7"].location != NSNotFound
+            || [outRead rangeOfString:@"jdk1.8"].location != NSNotFound)
+        {
+            return [[outRead stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
+                                    stringByAppendingPathComponent:@"/jre/lib/jli/libjli.dylib"];
+        }
+    }
+    @catch (NSException *exception)
+    {
+        NSLog (@"JDK search exception: '%@'", [exception reason]);
+    }
+
+    return nil;
 }
