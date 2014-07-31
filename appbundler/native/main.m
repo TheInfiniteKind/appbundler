@@ -303,7 +303,7 @@ NSString * findDylib ( )
 //  do then return address for dylib that should be in the JRE package.
     @try
     {
-        NSTask *task = [[[NSTask alloc] init] autorelease];
+        NSTask *task = [[NSTask alloc] init];
         [task setLaunchPath:@JRE_JAVA];
         
         NSArray *args = [NSArray arrayWithObjects: @"-version", nil];
@@ -353,7 +353,7 @@ NSString * findDylib ( )
 //  dylib in the JRE within the JDK.
     @try
     {
-        NSTask *task = [[[NSTask alloc] init] autorelease];
+        NSTask *task = [[NSTask alloc] init];
         [task setLaunchPath:@"/usr/libexec/java_home"];
 
         NSArray *args = [NSArray arrayWithObjects: @"-v", @"1.7+", nil];
