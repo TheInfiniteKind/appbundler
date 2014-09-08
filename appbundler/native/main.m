@@ -141,6 +141,20 @@ int launch(char *commandName) {
 
     // Set the class path
     NSString *mainBundlePath = [mainBundle bundlePath];
+
+    // make sure the bundle path does not contain a colon, as that messes up the java.class.path,
+    // because colons are used a path separators and cannot be escaped.
+
+    // funny enough, Finder does not let you create folder with colons in their names,
+    // but when you create a folder with a slash, e.g. "audio/video", it is accepted
+    // and turned into... you guessed it, a colon:
+    // "audio:video"
+    if ([mainBundlePath rangeOfString:@":"].location != NSNotFound) {
+        [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
+            reason:NSLocalizedString(@"BundlePathContainsColon", @UNSPECIFIED_ERROR)
+            userInfo:nil] raise];
+    }
+
     NSString *javaPath = [mainBundlePath stringByAppendingString:@"/Contents/Java"];
     NSMutableString *classPath = [NSMutableString stringWithFormat:@"-Djava.class.path=%@/Classes", javaPath];
 
