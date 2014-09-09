@@ -74,6 +74,12 @@ questions.
     <td align="center" valign="top">No</td>
   </tr>
   <tr>
+    <td valign="top">hideDockIcon</td>
+    <td valign="top">Set to true to prevent display of the application icon on the Mac OS X dock.
+    Corresponds to the <code>LSUIElement</code> key in the <tt>Info.plist</tt> file.</td>
+    <td align="center" valign="top">No</td>
+  </tr>      
+  <tr>
     <td valign="top">shortversion</td>
     <td valign="top">The release version number string for the application.
     Corresponds to the <code>CFBundleShortVersionString</code> key in the <tt>Info.plist</tt>
@@ -187,6 +193,21 @@ Of named options, only the value is passed to the JVM, not the name. The name me
   </tr>
 </table>
 
+<h4>scheme</h4>
+<p>Specifies a protocol for which the bundled application should be registered as a handler.</p>
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr>
+    <td valign="top"><b>Attribute</b></td>
+    <td valign="top"><b>Description</b></td>
+    <td align="center" valign="top"><b>Required</b></td>
+  </tr>
+  <tr>
+    <td valign="top">value</td>
+    <td valign="top">The protocol scheme.</td>
+    <td align="center" valign="top">Yes</td>
+  </tr>
+</table>
+
 <h3>Examples</h3>
 <p>Generate a launcher for the "Swing Set" demo, bundling the JRE defined by the <tt>JAVA_HOME</tt>
 environment variable with the resulting executable.</p>
@@ -209,6 +230,7 @@ environment variable with the resulting executable.</p>
         &lt;runtime dir="${env.JAVA_HOME}"/&gt;
         &lt;classpath file="/Library/Java/Demos/JFC/SwingSet2/SwingSet2.jar"/&gt;
         &lt;option value="-Dapple.laf.useScreenMenuBar=true"/&gt;
+        &lt;scheme value="mailto"/&gt;
     &lt;/bundleapp&gt;
 &lt;/target&gt;
 </pre>
