@@ -76,12 +76,13 @@ public class AppBundlerTask extends Task {
     private String copyright = "";
     private String privileged = null;
     private String workingDirectory = null;
-    private String minimumSystemVersion = null;
+    private String minimumSystemVersion = null;    
 
     private String applicationCategory = null;
 
     private boolean highResolutionCapable = true;
     private boolean supportsAutomaticGraphicsSwitching = true;
+    private boolean hideDockIcon = false;
 
     // JVM info properties
     private String mainClassName = null;
@@ -91,6 +92,7 @@ public class AppBundlerTask extends Task {
     private ArrayList<Option> options = new ArrayList<>();
     private ArrayList<String> arguments = new ArrayList<>();
     private ArrayList<String> architectures = new ArrayList<>();
+    private ArrayList<String> registeredProtocols = new ArrayList<>();
     private ArrayList<BundleDocument> bundleDocuments = new ArrayList<>();
     
     private Reference classPathRef;
@@ -160,7 +162,7 @@ public class AppBundlerTask extends Task {
     public void setMinimumSystemVersion(String v){
         this.minimumSystemVersion = v;
     }
-    
+        
     public void setApplicationCategory(String applicationCategory) {
         this.applicationCategory = applicationCategory;
     }
@@ -168,7 +170,11 @@ public class AppBundlerTask extends Task {
     public void setHighResolutionCapable(boolean highResolutionCapable) {
         this.highResolutionCapable = highResolutionCapable;
     }
-
+    
+    public void setHideDockIcon(boolean hideDock) {
+        this.hideDockIcon = hideDock;
+    }
+    
     public void setSupportsAutomaticGraphicsSwitching(boolean supportsAutomaticGraphicsSwitching) {
         this.supportsAutomaticGraphicsSwitching = supportsAutomaticGraphicsSwitching;
     }
@@ -235,6 +241,15 @@ public class AppBundlerTask extends Task {
         }
 
         arguments.add(value);
+    }
+    public void addConfiguredScheme(Argument argument) throws BuildException {
+        String value = argument.getValue();
+
+        if (value == null) {
+            throw new BuildException("Value is required.");
+        }
+
+        this.registeredProtocols.add(value);
     }
 
     public void addConfiguredArch(Architecture architecture) throws BuildException {
@@ -535,7 +550,11 @@ public class AppBundlerTask extends Task {
             if (applicationCategory != null) {
                 writeProperty(xout, "LSApplicationCategoryType", applicationCategory);
             }
-
+            if(hideDockIcon){
+                writeKey(xout, "LSUIElement");
+                writeBoolean(xout, true); 
+                xout.writeCharacters("\n");
+            }
             if (highResolutionCapable) {
                 writeKey(xout, "NSHighResolutionCapable");
                 writeBoolean(xout, true); 
@@ -545,6 +564,28 @@ public class AppBundlerTask extends Task {
             if (supportsAutomaticGraphicsSwitching) {
                 writeKey(xout, "NSSupportsAutomaticGraphicsSwitching");
                 writeBoolean(xout, true); 
+                xout.writeCharacters("\n");
+            }
+            if(registeredProtocols.size() > 0){
+                writeKey(xout, "CFBundleURLTypes");
+                xout.writeStartElement(ARRAY_TAG);
+                xout.writeCharacters("\n");
+                xout.writeStartElement(DICT_TAG);
+                xout.writeCharacters("\n");
+                
+                writeProperty(xout, "CFBundleURLName", identifier);
+                writeKey(xout, "CFBundleURLSchemes");
+                xout.writeStartElement(ARRAY_TAG);
+                xout.writeCharacters("\n");
+                for(String scheme:registeredProtocols){
+                    writeString(xout, scheme);
+                }
+                xout.writeEndElement();
+                xout.writeCharacters("\n");
+                
+                xout.writeEndElement();
+                xout.writeCharacters("\n");
+                xout.writeEndElement();
                 xout.writeCharacters("\n");
             }
 
