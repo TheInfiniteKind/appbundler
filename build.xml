@@ -83,7 +83,7 @@ questions.
             <arg value="-F"/>
             <arg value="${javahome}/../.."/>
             <arg value="-isysroot"/>
-            <arg value="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk"/>
+            <arg value="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk"/>
             <arg value="-mmacosx-version-min=10.7"/>
             <arg value="appbundler/native/main.m"/>
         </exec>
