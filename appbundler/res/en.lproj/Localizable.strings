@@ -1,3 +1,4 @@
 "JRELoadError" = "Unable to load Java Runtime Environment.";
 "MainClassNameRequired" = "Main class name is required.";
 "JavaDirectoryNotFound" = "Unable to enumerate Java directory contents.";
+"BundlePathContainsColon" = "Cannot launch from folder that contains a \"/\" in its name.";

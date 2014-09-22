@@ -162,9 +162,22 @@ int launch(int inputArgc, char *intputArgv[]) {
     }
 
     NSFileManager *defaultFileManager = [NSFileManager defaultManager];
+    NSString *mainBundlePath = [mainBundle bundlePath];
+    
+    // make sure the bundle path does not contain a colon, as that messes up the java.class.path,
+    // because colons are used a path separators and cannot be escaped.
+    
+    // funny enough, Finder does not let you create folder with colons in their names,
+    // but when you create a folder with a slash, e.g. "audio/video", it is accepted
+    // and turned into... you guessed it, a colon:
+    // "audio:video"
+    if ([mainBundlePath rangeOfString:@":"].location != NSNotFound) {
+        [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
+                                 reason:NSLocalizedString(@"BundlePathContainsColon", @UNSPECIFIED_ERROR)
+                               userInfo:nil] raise];
+    }
 
     // Set the class path
-    NSString *mainBundlePath = [mainBundle bundlePath];
     NSString *javaPath = [mainBundlePath stringByAppendingString:@"/Contents/Java"];
 
     // Get the VM options
@@ -355,7 +368,7 @@ int launch(int inputArgc, char *intputArgv[]) {
         argument = [argument stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
         argv[i++] = strdup([argument UTF8String]);
     }
-    
+
     // Invoke JLI_Launch()
     return jli_LaunchFxnPtr(argc, argv,
                             sizeof(&const_jargs) / sizeof(char *), &const_jargs,
