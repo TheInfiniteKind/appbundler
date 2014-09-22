@@ -224,7 +224,14 @@ int launch(int inputArgc, char *intputArgv[]) {
         NSString *tempFileName = [NSString stringWithCString:tmpFile() encoding:NSASCIIStringEncoding];
         // File now exists.
         [defaultFileManager removeItemAtPath:tempFileName error:NULL];
-        [defaultFileManager copyItemAtURL:[NSURL fileURLWithPath:[javaPath stringByAppendingPathComponent:jnlplauncher]] toURL:[NSURL fileURLWithPath:tempFileName] error:&copyerror];
+        
+        // Check if this is absolute or relative (else)
+        NSString *jnlpPath = [mainBundlePath stringByAppendingPathComponent:jnlplauncher];
+        if ( ![defaultFileManager fileExistsAtPath:jnlpPath] ) {
+            jnlpPath = [javaPath stringByAppendingPathComponent:jnlplauncher];
+        }
+        
+        [defaultFileManager copyItemAtURL:[NSURL fileURLWithPath:jnlpPath] toURL:[NSURL fileURLWithPath:tempFileName] error:&copyerror];
         if ( copyerror != nil ) {
             NSLog(@"Error: %@", copyerror);
             [[NSException exceptionWithName:@"Error while copying JNLP File"
