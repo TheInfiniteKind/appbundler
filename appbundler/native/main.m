@@ -36,6 +36,7 @@
 #define JVM_OPTIONS_KEY "JVMOptions"
 #define JVM_DEFAULT_OPTIONS_KEY "JVMDefaultOptions"
 #define JVM_ARGUMENTS_KEY "JVMArguments"
+#define JVM_CLASSPATH_KEY "JVMClassPath"
 
 #define JVM_RUN_PRIVILEGED "JVMRunPrivileged"
 
@@ -169,22 +170,40 @@ int launch(char *commandName) {
     }
 
     NSString *javaPath = [mainBundlePath stringByAppendingString:@"/Contents/Java"];
-    NSMutableString *classPath = [NSMutableString stringWithFormat:@"-Djava.class.path=%@/Classes", javaPath];
+    NSMutableString *classPath = [NSMutableString stringWithString:@"-Djava.class.path="];
 
-    NSFileManager *defaultFileManager = [NSFileManager defaultManager];
-    NSArray *javaDirectoryContents = [defaultFileManager contentsOfDirectoryAtPath:javaPath error:nil];
-    if (javaDirectoryContents == nil) {
-        [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
-            reason:NSLocalizedString(@"JavaDirectoryNotFound", @UNSPECIFIED_ERROR)
-            userInfo:nil] raise];
-    }
+    NSArray *cp = [infoDictionary objectForKey:@JVM_CLASSPATH_KEY];
+    if (cp == nil) {
+        
+        // Implicit classpath, so use the contents of the "Java" folder to build an explicit classpath
+        
+        [classPath appendFormat:@"%@/Classes", javaPath];
+        NSFileManager *defaultFileManager = [NSFileManager defaultManager];
+        NSArray *javaDirectoryContents = [defaultFileManager contentsOfDirectoryAtPath:javaPath error:nil];
+        if (javaDirectoryContents == nil) {
+            [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
+                reason:NSLocalizedString(@"JavaDirectoryNotFound", @UNSPECIFIED_ERROR)
+                userInfo:nil] raise];
+        }
 
-    for (NSString *file in javaDirectoryContents) {
-        if ([file hasSuffix:@".jar"]) {
-            [classPath appendFormat:@":%@/%@", javaPath, file];
+        for (NSString *file in javaDirectoryContents) {
+            if ([file hasSuffix:@".jar"]) {
+                [classPath appendFormat:@":%@/%@", javaPath, file];
+            }
+        }
+        
+    } else {
+        
+        // Explicit ClassPath
+
+        int k = 0;
+        for (NSString *file in cp) {
+            if (k++ > 0) [classPath appendString:@":"]; // add separator if needed
+            file = [file stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
+            [classPath appendString:file];
         }
     }
-
+    
     // Set the library path
     NSString *libraryPath = [NSString stringWithFormat:@"-Djava.library.path=%@/Contents/MacOS", mainBundlePath];
 
