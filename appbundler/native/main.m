@@ -37,6 +37,7 @@
 #define JVM_DEFAULT_OPTIONS_KEY "JVMDefaultOptions"
 #define JVM_ARGUMENTS_KEY "JVMArguments"
 #define JVM_CLASSPATH_KEY "JVMClassPath"
+#define JVM_DEBUG_KEY "JVMDebug"
 
 #define JVM_RUN_PRIVILEGED "JVMRunPrivileged"
 
@@ -89,6 +90,9 @@ int launch(char *commandName) {
 
     // Get the main bundle's info dictionary
     NSDictionary *infoDictionary = [mainBundle infoDictionary];
+    
+    // Test for debugging
+    bool isDebugging = [[infoDictionary objectForKey:@JVM_DEBUG_KEY] boolValue];
     
     // Set the working directory based on config, defaulting to the user's home directory
     NSString *workingDir = [infoDictionary objectForKey:@WORKING_DIR];
@@ -306,6 +310,14 @@ int launch(char *commandName) {
         argument = [argument stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
         argv[i++] = strdup([argument UTF8String]);
     }
+
+    // Print the full command line for debugging purposes...
+    if (isDebugging) {
+		NSLog(@"Command line passed to application:");
+		for( int j=0; j<i; j++) {
+			NSLog(@"Arg %d: '%s'", j, argv[j]);
+		}
+	}
 
     // Invoke JLI_Launch()
     return jli_LaunchFxnPtr(argc, argv,
