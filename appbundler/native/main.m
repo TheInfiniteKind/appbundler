@@ -62,6 +62,7 @@ typedef int (JNICALL *JLI_Launch_t)(int argc, char ** argv,
 
 int launch(char *);
 NSString * findDylib ( );
+NSString * convertRelativeFilePath(NSString * path);
 
 int main(int argc, char *argv[]) {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -101,6 +102,9 @@ int launch(char *commandName) {
     } else {
         workingDir = NSHomeDirectory();
     }
+    if (isDebugging) {
+    	NSLog(@"Working Directory: '%@'", convertRelativeFilePath(workingDir));
+    }
     
     chdir([workingDir UTF8String]);
            
@@ -128,6 +132,9 @@ int launch(char *commandName) {
     else
     {
         javaDylib = findDylib ( );
+    }
+    if (isDebugging) {
+    	NSLog(@"Java Runtime: '%@'", convertRelativeFilePath(javaDylib));
     }
 
     const char *libjliPath = NULL;
@@ -445,4 +452,8 @@ NSString * findDylib ( )
     }
 
     return nil;
+}
+
+NSString * convertRelativeFilePath(NSString * path) {
+    return [path stringByStandardizingPath];
 }
