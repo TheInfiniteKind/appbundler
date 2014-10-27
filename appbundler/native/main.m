@@ -60,7 +60,11 @@ typedef int (JNICALL *JLI_Launch_t)(int argc, char ** argv,
                                     jboolean javaw,
                                     jint ergo);
 
-int launch(char *);
+static char** progargv = NULL;
+static int progargc = 0;
+static int launchCount = 0;
+
+int launch(char *, int, char **);
 NSString * findDylib ( );
 NSString * convertRelativeFilePath(NSString * path);
 
@@ -69,7 +73,12 @@ int main(int argc, char *argv[]) {
 
     int result;
     @try {
-        launch(argv[0]);
+    	if ((argc > 1) && (launchCount == 0)) {
+    		progargc = argc - 1;
+    		progargv = &argv[1];
+    	}
+
+        launch(argv[0], progargc, progargv);
         result = 0;
     } @catch (NSException *exception) {
         NSAlert *alert = [[NSAlert alloc] init];
@@ -85,7 +94,7 @@ int main(int argc, char *argv[]) {
     return result;
 }
 
-int launch(char *commandName) {
+int launch(char *commandName, int progargc, char *progargv[]) {
     // Get the main bundle
     NSBundle *mainBundle = [NSBundle mainBundle];
 
@@ -288,7 +297,7 @@ int launch(char *commandName) {
 
     // Initialize the arguments to JLI_Launch()
     // +5 due to the special directories and the sandbox enabled property
-    int argc = 1 + [options count] + [defaultOptions count] + 2 + [arguments count] + 1 + 5;
+    int argc = 1 + [options count] + [defaultOptions count] + 2 + [arguments count] + 1 + 5 + progargc;
     char *argv[argc];
 
     int i = 0;
@@ -325,6 +334,12 @@ int launch(char *commandName) {
 			NSLog(@"Arg %d: '%s'", j, argv[j]);
 		}
 	}
+
+	for (int ctr = 0; ctr < progargc; ctr++) {
+		argv[i++] = progargv[ctr];
+	}
+
+	launchCount++;
 
     // Invoke JLI_Launch()
     return jli_LaunchFxnPtr(argc, argv,
