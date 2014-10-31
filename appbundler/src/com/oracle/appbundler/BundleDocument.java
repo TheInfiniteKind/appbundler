@@ -23,7 +23,6 @@
 
 package com.oracle.appbundler;
 
-import java.io.File;
 import org.apache.tools.ant.BuildException;
 
 
@@ -31,81 +30,108 @@ import org.apache.tools.ant.BuildException;
  * Represent a CFBundleDocument.
  */
 public class BundleDocument {
-    private String name = "editor";
-    private String role = "";
-    private String icon = null;
-    private String[] extensions;
-    private boolean isPackage = false;
 
-    private String capitalizeFirst(String string) {
-        char[] stringArray = string.toCharArray();
-        stringArray[0] = Character.toUpperCase(stringArray[0]);
-        return new String(stringArray);
-    }
-    
-    public void setExtensions(String extensionsList) {
-        if(extensionsList == null) {
-            throw new BuildException("Extensions can't be null");
-        }
-        
-        extensions = extensionsList.split(",");
-        for (String extension : extensions) {
-            extension.trim().toLowerCase();
-        }
-    }
-    
-    public void setIcon(String icon) {
-      this.icon = icon;
-    }
+	private String name = "editor";
+	private String role = "";
+	private String icon = null;
+	private String[] extensions;
+	private boolean isPackage = false;
 
-    public void setName(String name) {
-      this.name = name;
-    }
 
-    public void setRole(String role) {
-      this.role = capitalizeFirst(role);
-    }
-    
-    public void setIsPackage(String isPackageString) {
-        if(isPackageString.trim().equalsIgnoreCase("true")) {
-            this.isPackage = true;
-        } else {
-            this.isPackage = false;
-        }
-    }
-    
-    public String getIcon() {
-        return icon;
-    }
 
-    public String getName() {
-        return name;
-    }
+	private String capitalizeFirst(String string) {
+		char[] stringArray = string.toCharArray();
+		stringArray[0] = Character.toUpperCase(stringArray[0]);
+		return new String(stringArray);
+	}
 
-    public String getRole() {
-        return role;
-    }
-    
-    public String[] getExtensions() {
-        return extensions;
-    }
-    
-    public boolean hasIcon() {
-        return icon != null;
-    }
-    
-    public boolean isPackage() {
-        return isPackage;
-    }
 
-    @Override
-    public String toString() {
-        StringBuilder s = new StringBuilder(getName());
-        s.append(" ").append(getRole()).append(" ").append(getIcon()). append(" ");
-        for(String extension : extensions) {
-            s.append(extension).append(" ");
-        }
-        
-        return s.toString();
-    }
+
+	public void setExtensions(String extensionsList) {
+		if (extensionsList == null) {
+			throw new BuildException("Extensions can't be null");
+		}
+
+		extensions = extensionsList.split(",");
+		for (String extension : extensions) {
+			extension.trim().toLowerCase();
+		}
+	}
+
+
+
+	public void setIcon(String icon) {
+		this.icon = icon;
+	}
+
+
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+
+
+	public void setRole(String role) {
+		this.role = capitalizeFirst(role);
+	}
+
+
+
+	public void setIsPackage(String isPackageString) {
+		if (isPackageString.trim().equalsIgnoreCase("true")) {
+			this.isPackage = true;
+		} else {
+			this.isPackage = false;
+		}
+	}
+
+
+
+	public String getIcon() {
+		return icon;
+	}
+
+
+
+	public String getName() {
+		return name;
+	}
+
+
+
+	public String getRole() {
+		return role;
+	}
+
+
+
+	public String[] getExtensions() {
+		return extensions;
+	}
+
+
+
+	public boolean hasIcon() {
+		return icon != null;
+	}
+
+
+
+	public boolean isPackage() {
+		return isPackage;
+	}
+
+
+
+	@Override
+	public String toString() {
+		StringBuilder s = new StringBuilder(getName());
+		s.append(" ").append(getRole()).append(" ").append(getIcon()).append(" ");
+		for (String extension : extensions) {
+			s.append(extension).append(" ");
+		}
+
+		return s.toString();
+	}
 }
