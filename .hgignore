@@ -1,2 +1,5 @@
 syntax: glob
 appbundler/bin
+.classpath
+.project
+.settings/
