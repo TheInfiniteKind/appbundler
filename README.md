@@ -48,7 +48,7 @@ Example:
           shortversion="${version.public}"
           version="${version.internal}"
           icon="${bundle.icon}"
-          splashImage="${splash.file}"
+          splashImage="${splash.file}
           mainclassname="Main"
           copyright="2012 Your Company"
           applicationCategory="public.app-category.finance">
