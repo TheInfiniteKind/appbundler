@@ -25,11 +25,6 @@ These are the environment variables passed to the JVM:
 - `ApplicationSupportDirectory`
 - `SandboxEnabled` (the String `true` or `false`)
 
-Changes since fork:
-
-- Added support for program arguments (e.g., MyApp.app/Contents/MacOS/JavaAppLauncher someArg)
-- Added support for splash image (bundleapp option 'splashImage')
-
 
 Example:
 
@@ -48,7 +43,6 @@ Example:
           shortversion="${version.public}"
           version="${version.internal}"
           icon="${bundle.icon}"
-          splashImage="${splash.file}
           mainclassname="Main"
           copyright="2012 Your Company"
           applicationCategory="public.app-category.finance">
