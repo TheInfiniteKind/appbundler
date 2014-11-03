@@ -101,8 +101,12 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     // Get the main bundle's info dictionary
     NSDictionary *infoDictionary = [mainBundle infoDictionary];
     
-    // Test for debugging
-    bool isDebugging = [[infoDictionary objectForKey:@JVM_DEBUG_KEY] boolValue];
+    // Test for debugging (but only on the second runthrough)
+    bool isDebugging = (launchCount > 0) && [[infoDictionary objectForKey:@JVM_DEBUG_KEY] boolValue];
+    
+    if (isDebugging) {
+        NSLog(@"Loading Application '%@'", [infoDictionary objectForKey:@"CFBundleName"]);
+    }
     
     // Set the working directory based on config, defaulting to the user's home directory
     NSString *workingDir = [infoDictionary objectForKey:@WORKING_DIR];
@@ -133,9 +137,9 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     NSString *runtime = [infoDictionary objectForKey:@JVM_RUNTIME_KEY];
     
     NSString *javaDylib;
+    NSString *runtimePath = [[mainBundle builtInPlugInsPath] stringByAppendingPathComponent:runtime];
     if (runtime != nil)
     {
-        NSString *runtimePath = [[mainBundle builtInPlugInsPath] stringByAppendingPathComponent:runtime];
         javaDylib = [runtimePath stringByAppendingPathComponent:@"Contents/Home/jre/lib/jli/libjli.dylib"];
     }
     else
@@ -143,7 +147,8 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         javaDylib = findDylib ( );
     }
     if (isDebugging) {
-    	NSLog(@"Java Runtime: '%@'", convertRelativeFilePath(javaDylib));
+        NSLog(@"Java Relative Runtime Path: '%@'", runtimePath);
+        NSLog(@"Java Runtime Dylib Path: '%@'", convertRelativeFilePath(javaDylib));
     }
 
     const char *libjliPath = NULL;
@@ -327,17 +332,17 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         argv[i++] = strdup([argument UTF8String]);
     }
 
-    // Print the full command line for debugging purposes...
-    if (isDebugging) {
-		NSLog(@"Command line passed to application:");
-		for( int j=0; j<i; j++) {
-			NSLog(@"Arg %d: '%s'", j, argv[j]);
-		}
-	}
-
 	for (int ctr = 0; ctr < progargc; ctr++) {
 		argv[i++] = progargv[ctr];
 	}
+    
+    // Print the full command line for debugging purposes...
+    if (isDebugging) {
+        NSLog(@"Command line passed to application:");
+        for( int j=0; j<i; j++) {
+            NSLog(@"Arg %d: '%s'", j, argv[j]);
+        }
+    }
 
 	launchCount++;
 
