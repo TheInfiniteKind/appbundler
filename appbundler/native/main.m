@@ -147,7 +147,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         javaDylib = findDylib ( );
     }
     if (isDebugging) {
-        NSLog(@"Java Relative Runtime Path: '%@'", runtimePath);
+        NSLog(@"Java Runtime Path (relative): '%@'", runtimePath);
         NSLog(@"Java Runtime Dylib Path: '%@'", convertRelativeFilePath(javaDylib));
     }
 
