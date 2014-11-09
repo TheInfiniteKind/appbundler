@@ -795,11 +795,6 @@ public class AppBundlerTask extends Task {
         try (InputStream in = location.openStream()) {
             Files.copy(in, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
-        catch (Exception exc)
-        {
-        System.err.println ("Trying to copy " + location + " to " + file);
-            throw exc;
-        }
     }
 
     private static void copy(File source, File destination) throws IOException {
