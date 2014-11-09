@@ -83,6 +83,7 @@ public class AppBundlerTask extends Task {
     private boolean highResolutionCapable = true;
     private boolean supportsAutomaticGraphicsSwitching = true;
     private boolean hideDockIcon = false;
+    private boolean isDebug = false;
 
     // JVM info properties
     private String mainClassName = null;
@@ -175,6 +176,10 @@ public class AppBundlerTask extends Task {
         this.hideDockIcon = hideDock;
     }
     
+    public void setDebug(boolean enabled) {
+        this.isDebug = enabled;
+    }
+
     public void setSupportsAutomaticGraphicsSwitching(boolean supportsAutomaticGraphicsSwitching) {
         this.supportsAutomaticGraphicsSwitching = supportsAutomaticGraphicsSwitching;
     }
@@ -291,6 +296,7 @@ public class AppBundlerTask extends Task {
 
         if (icon != null) {
             if (!icon.exists()) {
+                System.err.println ("Looking for icon at " + icon);
                 throw new IllegalStateException("Icon does not exist.");
             }
 
@@ -605,6 +611,12 @@ public class AppBundlerTask extends Task {
             // Write main class name
             writeProperty(xout, "JVMMainClassName", mainClassName);
 
+            // Write whether launcher be verbose with debug msgs
+            if (isDebug) {
+                writeKey(xout, "JVMDebug");
+                writeBoolean(xout, isDebug);
+                xout.writeCharacters("\n");
+            }
 
             // Write CFBundleDocument entries
             writeKey(xout, "CFBundleDocumentTypes");
@@ -783,6 +795,11 @@ public class AppBundlerTask extends Task {
     private static void copy(URL location, File file) throws IOException {
         try (InputStream in = location.openStream()) {
             Files.copy(in, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+        catch (Exception exc)
+        {
+        System.err.println ("Trying to copy " + location + " to " + file);
+            throw exc;
         }
     }
 
