@@ -296,7 +296,6 @@ public class AppBundlerTask extends Task {
 
         if (icon != null) {
             if (!icon.exists()) {
-                System.err.println ("Looking for icon at " + icon);
                 throw new IllegalStateException("Icon does not exist.");
             }
 
