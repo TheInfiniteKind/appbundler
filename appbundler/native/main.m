@@ -65,8 +65,9 @@ static int progargc = 0;
 static int launchCount = 0;
 
 int launch(char *, int, char **);
-NSString * findDylib ( );
-NSString * convertRelativeFilePath(NSString * path);
+NSString * findDylib (bool);
+int extractMajorVersion (NSString *vstring)
+;NSString * convertRelativeFilePath(NSString * path);
 
 int main(int argc, char *argv[]) {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -144,7 +145,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     }
     else
     {
-        javaDylib = findDylib ( );
+        javaDylib = findDylib (isDebugging);
     }
     if (isDebugging) {
         NSLog(@"Java Runtime Path (relative): '%@'", runtimePath);
@@ -361,16 +362,17 @@ int launch(char *commandName, int progargc, char *progargv[]) {
 }
 
 /**
- *  Searches for a JRE 1.7 or 1.8 dylib.
+ *  Searches for a JRE 1.7 or later dylib.
  *  First checks the "usual" JRE location, and failing that looks for a JDK.
  */
-NSString * findDylib ( )
+NSString * findDylib (
+        bool isDebugging)
 {
-    NSLog (@"Searching for a JRE.");
+    if (isDebugging) { NSLog (@"Searching for a JRE."); }
 
-//  Try the "java -version" command and see if we get a 1.7 or 1.8 response (note 
-//  that for unknown but ancient reasons, the result is output to stderr). If we
-//  do then return address for dylib that should be in the JRE package.
+//  Try the "java -version" command and see if we get a 1.7 or later response 
+//  (note that for unknown but ancient reasons, the result is output to stderr).
+//  If we do then return address for dylib that should be in the JRE package.
     @try
     {
         NSTask *task = [[NSTask alloc] init];
@@ -401,12 +403,32 @@ NSString * findDylib ( )
                                                   encoding:NSUTF8StringEncoding];
         NSString *errRead = [[NSString alloc] initWithData:data2
                                                   encoding:NSUTF8StringEncoding];
-    
-        if ( errRead != nil)
-        {
-            if ( [errRead rangeOfString:@"java version \"1.7."].location != NSNotFound
-                || [errRead rangeOfString:@"java version \"1.8."].location != NSNotFound)
-            {
+
+    //  Found something in errRead. Parse it for a Java version string and
+    //  try to extract a major version number.
+        if (errRead != nil) {
+            int version = 0;
+
+            NSRange vrange = [errRead rangeOfString:@"java version \"1."];
+
+            if (vrange.location != NSNotFound) {
+                NSString *vstring = [errRead substringFromIndex:(vrange.location + 14)];
+
+                vrange  = [vstring rangeOfString:@"\""];
+                vstring = [vstring substringToIndex:vrange.location];
+
+                version = extractMajorVersion(vstring);
+
+                if (isDebugging) {
+                    NSLog (@"Found a Java %@ JRE", vstring);
+                    NSLog (@"Looks like major version %d", extractMajorVersion(vstring));
+                }
+            }
+
+            if ( version >= 7 ) {
+                if (isDebugging) {
+                    NSLog (@"JRE version qualifies");
+                }
                 return @JRE_DYLIB;
             }
         }
@@ -416,7 +438,7 @@ NSString * findDylib ( )
         NSLog (@"JRE search exception: '%@'", [exception reason]);
     }
 
-    NSLog (@"Could not find a JRE. Will look for a JDK.");
+    if (isDebugging) { NSLog (@"Could not find a JRE. Will look for a JDK."); }
 
 //  Having failed to find a JRE in the usual location, see if a JDK is installed
 //  (probably in /Library/Java/JavaVirtualMachines). If so, return address of
@@ -452,16 +474,37 @@ NSString * findDylib ( )
         NSString *errRead = [[NSString alloc] initWithData:data2
                                                     encoding:NSUTF8StringEncoding];
 
+    //  If matching JDK not found, outRead will include something like
+    //  "Unable to find any JVMs matching version "1.X"."
         if ( errRead != nil
                 && [errRead rangeOfString:@"Unable"].location != NSNotFound )
         {
-            NSLog (@"No JDK 1.7 or later found.");
+            if (isDebugging) {  NSLog (@"No matching JDK found."); }
             return nil;
         }
 
-        if ( [outRead rangeOfString:@"jdk1.7"].location != NSNotFound
-            || [outRead rangeOfString:@"jdk1.8"].location != NSNotFound)
-        {
+        int version = 0;
+
+        NSRange vrange = [outRead rangeOfString:@"jdk1."];
+
+        if (vrange.location != NSNotFound) {
+            NSString *vstring = [outRead substringFromIndex:(vrange.location)];
+
+            vrange  = [vstring rangeOfString:@"/"];
+            vstring = [vstring substringToIndex:vrange.location];
+
+            version = extractMajorVersion(vstring);
+
+            if (isDebugging) {
+                NSLog (@"Found a Java %@ JDK", vstring);
+                NSLog (@"Looks like major version %d", extractMajorVersion(vstring));
+            }
+        }
+
+        if ( version >= 7 ) {
+            if (isDebugging) {
+                NSLog (@"JDK version qualifies");
+            }
             return [[outRead stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
                                     stringByAppendingPathComponent:@"/jre/lib/jli/libjli.dylib"];
         }
@@ -472,6 +515,34 @@ NSString * findDylib ( )
     }
 
     return nil;
+}
+
+/**
+ *  Extract the Java major version number from a string. We expect the input
+ *  to look like either either "1.X.Y_ZZ" or "jkd1.X.Y_ZZ", and the returned
+ *  result will be the integral value of X. Any failure to parse the string
+ *  will return 0.
+ */
+int extractMajorVersion (NSString *vstring)
+{
+//  Expecting either a java version of form 1.X.Y_ZZ or jkd1.X.Y_ZZ.
+//  Strip off everything at start up to and including the "1."
+    NSUInteger vstart = [vstring rangeOfString:@"1."].location;
+
+    if (vstart == NSNotFound) { return 0; }
+
+    vstring = [vstring substringFromIndex:(vstart+2)];
+
+//  Now find the dot after the major version number.
+    NSUInteger vdot = [vstring rangeOfString:@"."].location;
+
+    if (vdot == NSNotFound) { return 0; }
+
+//  Strip off everything beginning at that dot.
+    vstring = [vstring substringToIndex:vdot];
+
+//  And convert what's left to an int.
+    return [vstring intValue];
 }
 
 NSString * convertRelativeFilePath(NSString * path) {
