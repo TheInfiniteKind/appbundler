@@ -90,6 +90,16 @@ public class BundleDocument {
         return extensions;
     }
     
+    public File getIconFile() {
+        if (icon == null) { return null; }
+
+        File ifile = new File (icon);
+        
+        if (! ifile.exists ( ) || ifile.isDirectory ( )) { return null; }
+
+        return ifile;
+    }
+    
     public boolean hasIcon() {
         return icon != null;
     }
