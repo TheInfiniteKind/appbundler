@@ -379,8 +379,17 @@ public class AppBundlerTask extends Task {
             // Copy library path entries to MacOS folder
             copyLibraryPathEntries(macOSDirectory);
 
-            // Copy icon to Resources folder
+            // Copy app icon to Resources folder
             copyIcon(resourcesDirectory);
+
+            // Copy app document icons to Resources folder
+            for(BundleDocument bundleDocument: bundleDocuments) {
+                if(bundleDocument.hasIcon()) {
+                    File ifile = bundleDocument.getIconFile();
+                    if (ifile != null) {
+                        copyDocumentIcon(ifile,resourcesDirectory); }
+                }
+            }
         } catch (IOException exception) {
             throw new BuildException(exception);
         }
@@ -512,6 +521,14 @@ public class AppBundlerTask extends Task {
         }
     }
 
+    private void copyDocumentIcon(File ifile, File resourcesDirectory) throws IOException {
+        if (icon == null) {
+            return;
+        } else {
+            copy(ifile, new File(resourcesDirectory, ifile.getName()));
+        }
+    }
+
     private void writeInfoPlist(File file) throws IOException {
         Writer out = new BufferedWriter(new FileWriter(file));
         XMLOutputFactory output = XMLOutputFactory.newInstance();
@@ -638,7 +655,15 @@ public class AppBundlerTask extends Task {
                 
                 if(bundleDocument.hasIcon()) {
                     writeKey(xout, "CFBundleTypeIconFile");
-                    writeString(xout, bundleDocument.getIcon());
+
+                    File ifile = bundleDocument.getIconFile();
+                    
+                    if (file != null) {
+                        writeString(xout, ifile.getName());
+                    }
+                    else {
+                        writeString(xout, bundleDocument.getIcon());
+                    }
                 }
                 
                 writeKey(xout, "CFBundleTypeName");
@@ -794,6 +819,11 @@ public class AppBundlerTask extends Task {
     private static void copy(URL location, File file) throws IOException {
         try (InputStream in = location.openStream()) {
             Files.copy(in, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+        catch (Exception exc)
+        {
+        System.err.println ("Trying to copy " + location + " to " + file);
+            throw exc;
         }
     }
 
