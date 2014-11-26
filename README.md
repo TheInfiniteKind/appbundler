@@ -42,7 +42,7 @@ Example:
           identifier="com.company.product"
           shortversion="${version.public}"
           version="${version.internal}"
-          icon="${bundle.icon}"
+          icon="${icons.path}/${bundle.icns}"
           mainclassname="Main"
           copyright="2012 Your Company"
           applicationCategory="public.app-category.finance">
@@ -53,19 +53,19 @@ Example:
           <arch name="i386"/>
 
           <bundledocument extensions="png,jpg"
-            icon="${bundle.icon}"
+            icon="${icons.path}/${image.icns}"
             name="Images"
             role="editor">
           </bundledocument> 
 
           <bundledocument extensions="pdf"
-            icon="${bundle.icon}"
+            icon="${icons.path}/${pdf.icns}"
             name="PDF files"
             role="viewer">
           </bundledocument>
 
           <bundledocument extensions="custom"
-            icon="${bundle.icon}"
+            icon="${icons.path}/${data.icns}"
             name="Custom data"
             role="editor"
             isPackage="true">
