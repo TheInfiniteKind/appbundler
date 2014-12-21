@@ -71,8 +71,8 @@ Example:
             isPackage="true">
           </bundledocument>
 
-          <!-- Workaround since the icon parameter for bundleapp doesn't work -->
-          <option value="-Xdock:icon=Contents/Resources/${bundle.icon}"/>
+          <!-- Workaround as com.apple.mrj.application.apple.menu.about.name property may no longer work -->
+          <option value="-Xdock:name=${bundle.name}"/>
 
           <option value="-Dapple.laf.useScreenMenuBar=true"/>
           <option value="-Dcom.apple.macos.use-file-dialog-packages=true"/>
