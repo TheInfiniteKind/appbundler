@@ -34,6 +34,7 @@ Example:
         classname="com.oracle.appbundler.AppBundlerTask"/>
 
       <bundleapp 
+          jvmrequired="1.7"
           classpathref="runclasspathref"
           outputdirectory="${dist}"
           name="${bundle.name}"
