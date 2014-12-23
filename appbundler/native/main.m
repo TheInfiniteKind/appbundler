@@ -37,6 +37,7 @@
 #define JVM_DEFAULT_OPTIONS_KEY "JVMDefaultOptions"
 #define JVM_ARGUMENTS_KEY "JVMArguments"
 #define JVM_CLASSPATH_KEY "JVMClassPath"
+#define JVM_VERSION_KEY "JVMVersion"
 #define JVM_DEBUG_KEY "JVMDebug"
 
 #define JVM_RUN_PRIVILEGED "JVMRunPrivileged"
@@ -65,9 +66,9 @@ static int progargc = 0;
 static int launchCount = 0;
 
 int launch(char *, int, char **);
-NSString * findDylib (bool);
-int extractMajorVersion (NSString *vstring)
-;NSString * convertRelativeFilePath(NSString * path);
+NSString * findDylib (NSString *, bool);
+int extractMajorVersion (NSString *);
+NSString * convertRelativeFilePath(NSString *);
 
 int main(int argc, char *argv[]) {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -139,13 +140,15 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     
     NSString *javaDylib;
     NSString *runtimePath = [[mainBundle builtInPlugInsPath] stringByAppendingPathComponent:runtime];
+    NSString *jvmRequired = [infoDictionary objectForKey:@JVM_VERSION_KEY];
+
     if (runtime != nil)
     {
         javaDylib = [runtimePath stringByAppendingPathComponent:@"Contents/Home/jre/lib/jli/libjli.dylib"];
     }
     else
     {
-        javaDylib = findDylib (isDebugging);
+        javaDylib = findDylib (jvmRequired, isDebugging);
     }
     if (isDebugging) {
         NSLog(@"Java Runtime Path (relative): '%@'", runtimePath);
@@ -166,9 +169,23 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     }
 
     if (jli_LaunchFxnPtr == NULL) {
+        NSString *msg;
+
+        if (runtime == nil && jvmRequired != nil) {
+            int required = extractMajorVersion (jvmRequired);
+            
+            if (required < 7) { required = 7; }
+            
+            NSString *msga = NSLocalizedString(@"JRExLoadError", @UNSPECIFIED_ERROR);
+
+            msg = [NSString stringWithFormat:msga, required];
+        }
+        else {
+            msg = NSLocalizedString(@"JRELoadError", @UNSPECIFIED_ERROR);
+        }
+
         [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
-            reason:NSLocalizedString(@"JRELoadError", @UNSPECIFIED_ERROR)
-            userInfo:nil] raise];
+                reason:msg  userInfo:nil] raise];
     }
 
     // Get the main class name
@@ -362,13 +379,22 @@ int launch(char *commandName, int progargc, char *progargv[]) {
 }
 
 /**
- *  Searches for a JRE 1.7 or later dylib.
+ *  Searches for a JRE or JDK dylib of the specified version or later.
  *  First checks the "usual" JRE location, and failing that looks for a JDK.
+ *  The version required should be a string of form "1.X". If no version is
+ *  specified or the version is pre-1.7, then a Java 1.7 is sought.
  */
 NSString * findDylib (
+        NSString *jvmRequired,
         bool isDebugging)
 {
-    if (isDebugging) { NSLog (@"Searching for a JRE."); }
+    int required = extractMajorVersion(jvmRequired);
+
+    if (required < 7) { required = 7; }
+
+    if (isDebugging) {
+        NSLog (@"Searching for a Java %d", required);
+    }
 
 //  Try the "java -version" command and see if we get a 1.7 or later response 
 //  (note that for unknown but ancient reasons, the result is output to stderr).
@@ -425,7 +451,7 @@ NSString * findDylib (
                 }
             }
 
-            if ( version >= 7 ) {
+            if ( version >= required ) {
                 if (isDebugging) {
                     NSLog (@"JRE version qualifies");
                 }
@@ -501,7 +527,7 @@ NSString * findDylib (
             }
         }
 
-        if ( version >= 7 ) {
+        if ( version >= required ) {
             if (isDebugging) {
                 NSLog (@"JDK version qualifies");
             }
@@ -519,12 +545,14 @@ NSString * findDylib (
 
 /**
  *  Extract the Java major version number from a string. We expect the input
- *  to look like either either "1.X.Y_ZZ" or "jkd1.X.Y_ZZ", and the returned
- *  result will be the integral value of X. Any failure to parse the string
- *  will return 0.
+ *  to look like either either "1.X", "1.X.Y_ZZ" or "jkd1.X.Y_ZZ", and the 
+ *  returned result will be the integral value of X. Any failure to parse the
+ *  string will return 0.
  */
 int extractMajorVersion (NSString *vstring)
 {
+    if (vstring == nil) { return 0; }
+
 //  Expecting either a java version of form 1.X.Y_ZZ or jkd1.X.Y_ZZ.
 //  Strip off everything at start up to and including the "1."
     NSUInteger vstart = [vstring rangeOfString:@"1."].location;
@@ -533,10 +561,13 @@ int extractMajorVersion (NSString *vstring)
 
     vstring = [vstring substringFromIndex:(vstart+2)];
 
-//  Now find the dot after the major version number.
+//  Now find the dot after the major version number, if present.
     NSUInteger vdot = [vstring rangeOfString:@"."].location;
 
-    if (vdot == NSNotFound) { return 0; }
+//  No second dot, so return int of what we have.
+    if (vdot == NSNotFound) {
+        return [vstring intValue];
+    }
 
 //  Strip off everything beginning at that dot.
     vstring = [vstring substringToIndex:vdot];
