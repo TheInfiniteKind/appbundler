@@ -76,7 +76,8 @@ public class AppBundlerTask extends Task {
     private String copyright = "";
     private String privileged = null;
     private String workingDirectory = null;
-    private String minimumSystemVersion = null;    
+    private String minimumSystemVersion = null;  
+    private String jvmRequired = "1.7";  
 
     private String applicationCategory = null;
 
@@ -160,6 +161,10 @@ public class AppBundlerTask extends Task {
         this.workingDirectory = workingDirectory;
     }
     
+    public void setJVMRequired(String v){
+        this.jvmRequired = v;
+    }
+        
     public void setMinimumSystemVersion(String v){
         this.minimumSystemVersion = v;
     }
@@ -614,6 +619,10 @@ public class AppBundlerTask extends Task {
             // Write runtime
             if (runtime != null) {
                 writeProperty(xout, "JVMRuntime", runtime.getDir().getParentFile().getParentFile().getName());
+            }
+            
+            if ( jvmRequired != null ) {
+                writeProperty(xout, "JVMVersion", jvmRequired);
             }
             
             if ( privileged != null ) {
