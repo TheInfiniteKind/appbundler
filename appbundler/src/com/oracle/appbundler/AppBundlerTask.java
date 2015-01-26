@@ -87,6 +87,7 @@ public class AppBundlerTask extends Task {
     // JVM info properties
     private String mainClassName = null;
     private String jnlpLauncherName = null;
+    private String jarLauncherName = null;
     private FileSet runtime = null;
     private ArrayList<FileSet> classPath = new ArrayList<>();
     private ArrayList<FileSet> libraryPath = new ArrayList<>();
@@ -186,6 +187,10 @@ public class AppBundlerTask extends Task {
     
     public void setJnlpLauncherName(String jnlpLauncherName) {
         this.jnlpLauncherName = jnlpLauncherName;
+    }
+    
+    public void setJarLauncherName(String jarLauncherName) {
+        this.jarLauncherName = jarLauncherName;
     }
     
    public void addConfiguredRuntime(FileSet runtime) throws BuildException {
@@ -615,6 +620,10 @@ public class AppBundlerTask extends Task {
                 writeProperty(xout, "JVMMainClassName", mainClassName);
             }
 
+            if ( jarLauncherName != null ) {
+                writeProperty(xout, "JVMJARLauncher", jarLauncherName);
+            }
+            
             // Write CFBundleDocument entries
             writeKey(xout, "CFBundleDocumentTypes");
             

@@ -39,6 +39,7 @@
 
 #define JVM_RUN_PRIVILEGED "JVMRunPrivileged"
 #define JVM_RUN_JNLP "JVMJNLPLauncher"
+#define JVM_RUN_JAR "JVMJARLauncher"
 
 #define UNSPECIFIED_ERROR "An unknown error occurred."
 
@@ -198,6 +199,10 @@ int launch(int inputArgc, char *intputArgv[]) {
     // Set the library path
     NSString *libraryPath = [NSString stringWithFormat:@"-Djava.library.path=%@/Contents/MacOS", mainBundlePath];
     
+    // Check for a defined JAR File below the Contents/Java folder
+    // If set, use this instead of a classpath setting
+    NSString *jarlauncher = [infoDictionary objectForKey:@JVM_RUN_JAR];
+
     // check for jnlp launcher name
     // This basically circumvents the security problems introduced with 10.8.4 that JNLP Files must be signed to execute them without CTRL+CLick -> Open
     // See: How to sign (dynamic) JNLP files for OSX 10.8.4 and Gatekeeper http://stackoverflow.com/questions/16958130/how-to-sign-dynamic-jnlp-files-for-osx-10-8-4-and-gatekeeper
@@ -256,25 +261,31 @@ int launch(int inputArgc, char *intputArgv[]) {
         [arguments addObject:tempFileName];
         
     } else
-    if (mainClassName == nil) {
+    if ( mainClassName == nil && jarlauncher == nil ) {
         [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
             reason:NSLocalizedString(@"MainClassNameRequired", @UNSPECIFIED_ERROR)
             userInfo:nil] raise];
     }
 
-    NSArray *javaDirectoryContents = [defaultFileManager contentsOfDirectoryAtPath:javaPath error:nil];
-    if (javaDirectoryContents == nil) {
-        [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
-            reason:NSLocalizedString(@"JavaDirectoryNotFound", @UNSPECIFIED_ERROR)
-            userInfo:nil] raise];
-    }
-
-    for (NSString *file in javaDirectoryContents) {
-        if ([file hasSuffix:@".jar"]) {
-            [classPath appendFormat:@":%@/%@", javaPath, file];
+    // If a jar file is defined as launcher, disacard the javaPath
+    if ( jarlauncher != nil ) {
+        [classPath appendFormat:@":%@/%@", javaPath, jarlauncher];
+    } else {
+        // add all jar files.
+        NSArray *javaDirectoryContents = [defaultFileManager contentsOfDirectoryAtPath:javaPath error:nil];
+        if (javaDirectoryContents == nil) {
+            [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
+                                     reason:NSLocalizedString(@"JavaDirectoryNotFound", @UNSPECIFIED_ERROR)
+                                   userInfo:nil] raise];
+        }
+        
+        for (NSString *file in javaDirectoryContents) {
+            if ([file hasSuffix:@".jar"]) {
+                [classPath appendFormat:@":%@/%@", javaPath, file];
+            }
         }
     }
-
+    
     // Get the VM default options
     NSArray *defaultOptions = [NSArray array];
     NSDictionary *defaultOptionsDict = [infoDictionary objectForKey:@JVM_DEFAULT_OPTIONS_KEY];
@@ -367,6 +378,10 @@ int launch(int inputArgc, char *intputArgv[]) {
     for (NSString *argument in arguments) {
         argument = [argument stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
         argv[i++] = strdup([argument UTF8String]);
+    }
+    
+    for (int ii=0; ii<argc; ii++) {
+        NSLog(@"Starting java with options: '%s'", argv[ii]);
     }
 
     // Invoke JLI_Launch()
