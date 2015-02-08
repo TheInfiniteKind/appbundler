@@ -658,7 +658,7 @@ public class AppBundlerTask extends Task {
 
                     File ifile = bundleDocument.getIconFile();
                     
-                    if (file != null) {
+                    if (ifile != null) {
                         writeString(xout, ifile.getName());
                     }
                     else {
