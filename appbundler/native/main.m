@@ -333,14 +333,16 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         argv[i++] = strdup([argument UTF8String]);
     }
 
-	for (int ctr = 0; ctr < progargc; ctr++) {
+	int ctr = 0;
+	for (ctr = 0; ctr < progargc; ctr++) {
 		argv[i++] = progargv[ctr];
 	}
     
     // Print the full command line for debugging purposes...
     if (isDebugging) {
         NSLog(@"Command line passed to application:");
-        for( int j=0; j<i; j++) {
+        int j=0;
+        for(j=0; j<i; j++) {
             NSLog(@"Arg %d: '%s'", j, argv[j]);
         }
     }
