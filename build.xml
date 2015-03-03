@@ -69,7 +69,7 @@ questions.
             <isset property="env.JAVA_HOME"/>
         </condition>
 
-        <exec executable="${cc}">
+        <exec executable="${cc}" failonerror="true">
             <arg line="${arch64} ${arch32}"/>
             <arg value="-I"/>
             <arg value="${javahome}/include"/>
