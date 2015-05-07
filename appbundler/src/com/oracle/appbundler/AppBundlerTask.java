@@ -88,7 +88,7 @@ public class AppBundlerTask extends Task {
 
     // JVM info properties
     private String mainClassName = null;
-    private FileSet runtime = null;
+    private Runtime runtime = null;
     private ArrayList<FileSet> classPath = new ArrayList<>();
     private ArrayList<FileSet> libraryPath = new ArrayList<>();
     private ArrayList<Option> options = new ArrayList<>();
@@ -193,28 +193,12 @@ public class AppBundlerTask extends Task {
         this.mainClassName = mainClassName;
     }
 
-    public void addConfiguredRuntime(FileSet runtime) throws BuildException {
+    public void addConfiguredRuntime(Runtime runtime) throws BuildException {
         if (this.runtime != null) {
             throw new BuildException("Runtime already specified.");
         }
 
         this.runtime = runtime;
-
-        runtime.appendIncludes(new String[] {
-            "jre/",
-        });
-
-        runtime.appendExcludes(new String[] {
-            "bin/",
-            "jre/bin/",
-            "jre/lib/deploy/",
-            "jre/lib/deploy.jar",
-            "jre/lib/javaws.jar",
-            "jre/lib/libdeploy.dylib",
-            "jre/lib/libnpjp2.dylib",
-            "jre/lib/plugin.jar",
-            "jre/lib/security/javaws.policy"
-        });
     }
              
     public void setClasspathRef(Reference ref) {   
@@ -438,38 +422,7 @@ public class AppBundlerTask extends Task {
 
     private void copyRuntime(File plugInsDirectory) throws IOException {
         if (runtime != null) {
-            File runtimeHomeDirectory = runtime.getDir();
-            File runtimeContentsDirectory = runtimeHomeDirectory.getParentFile();
-            File runtimeDirectory = runtimeContentsDirectory.getParentFile();
-
-            // Create root plug-in directory
-            File pluginDirectory = new File(plugInsDirectory, runtimeDirectory.getName());
-            pluginDirectory.mkdir();
-
-            // Create Contents directory
-            File pluginContentsDirectory = new File(pluginDirectory, runtimeContentsDirectory.getName());
-            pluginContentsDirectory.mkdir();
-
-            // Copy MacOS directory
-            File runtimeMacOSDirectory = new File(runtimeContentsDirectory, "MacOS");
-            copy(runtimeMacOSDirectory, new File(pluginContentsDirectory, runtimeMacOSDirectory.getName()));
-
-            // Copy Info.plist file
-            File runtimeInfoPlistFile = new File(runtimeContentsDirectory, "Info.plist");
-            copy(runtimeInfoPlistFile, new File(pluginContentsDirectory, runtimeInfoPlistFile.getName()));
-
-            // Copy included contents of Home directory
-            File pluginHomeDirectory = new File(pluginContentsDirectory, runtimeHomeDirectory.getName());
-
-            DirectoryScanner directoryScanner = runtime.getDirectoryScanner(getProject());
-            String[] includedFiles = directoryScanner.getIncludedFiles();
-
-            for (int i = 0; i < includedFiles.length; i++) {
-                String includedFile = includedFiles[i];
-                File source = new File(runtimeHomeDirectory, includedFile);
-                File destination = new File(pluginHomeDirectory, includedFile);
-                copy(source, destination);
-            }
+            runtime.copyTo(plugInsDirectory);
         }
     }
 
@@ -836,7 +789,7 @@ public class AppBundlerTask extends Task {
         }
     }
 
-    private static void copy(File source, File destination) throws IOException {
+    static void copy(File source, File destination) throws IOException {
         Path sourcePath = source.toPath();
         Path destinationPath = destination.toPath();
 
