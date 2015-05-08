@@ -42,6 +42,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.StringTokenizer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -98,6 +99,7 @@ public class AppBundlerTask extends Task {
     private ArrayList<BundleDocument> bundleDocuments = new ArrayList<>();
     
     private Reference classPathRef;
+    private ArrayList<String> plistClassPaths = new ArrayList<>();
 
     private static final String EXECUTABLE_NAME = "JavaAppLauncher";
     private static final String DEFAULT_ICON_NAME = "GenericApp.icns";
@@ -219,6 +221,13 @@ public class AppBundlerTask extends Task {
              
     public void setClasspathRef(Reference ref) {   
         this.classPathRef = ref;                                         
+    }
+
+    public void setPlistClassPaths(String plistClassPaths) {
+        StringTokenizer tok = new StringTokenizer(plistClassPaths, ", ", false);
+        while (tok.hasMoreTokens()) {
+            this.plistClassPaths.add(tok.nextToken());
+        }
     }
 
     public void addConfiguredClassPath(FileSet classPath) {
@@ -635,6 +644,18 @@ public class AppBundlerTask extends Task {
 
             // Write main class name
             writeProperty(xout, "JVMMainClassName", mainClassName);
+
+            // Write classpaths in plist, if specified
+            if (!plistClassPaths.isEmpty()) {
+                writeKey(xout, "JVMClassPath");
+                xout.writeStartElement(ARRAY_TAG);
+                xout.writeCharacters("\n");
+                for (String cp : plistClassPaths) {
+                    writeString(xout, cp);
+                }
+                xout.writeEndElement();
+                xout.writeCharacters("\n");
+            }
 
             // Write whether launcher be verbose with debug msgs
             if (isDebug) {
