@@ -97,6 +97,7 @@ public class AppBundlerTask extends Task {
     private ArrayList<String> architectures = new ArrayList<>();
     private ArrayList<String> registeredProtocols = new ArrayList<>();
     private ArrayList<BundleDocument> bundleDocuments = new ArrayList<>();
+    private ArrayList<PlistEntry> plistEntries = new ArrayList<>();
     
     private Reference classPathRef;
     private ArrayList<String> plistClassPaths = new ArrayList<>();
@@ -224,6 +225,17 @@ public class AppBundlerTask extends Task {
     
     public void addConfiguredBundleDocument(BundleDocument document) {
         this.bundleDocuments.add(document);
+    }
+
+    public void addConfiguredPlistEntry(PlistEntry plistEntry) {
+        if (plistEntry.getKey() == null) {
+            throw new BuildException("Name is required.");
+        }
+        if (plistEntry.getValue() == null) {
+            throw new BuildException("Value is required.");
+        }
+
+        this.plistEntries.add(plistEntry);
     }
 
     public void addConfiguredOption(Option option) throws BuildException {
@@ -728,6 +740,12 @@ public class AppBundlerTask extends Task {
 
             xout.writeEndElement();
             xout.writeCharacters("\n");
+
+            // Write arbitrary key-value pairs
+            for (PlistEntry item : plistEntries) {
+                writeKey(xout, item.getKey());
+                writeString(xout, item.getValue());
+            }
 
             // End root dictionary
             xout.writeEndElement();
