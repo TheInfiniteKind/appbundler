@@ -16,6 +16,7 @@ with the following changes:
   the OSX special folders and whether the application is running in the
   sandbox (see below).
 - Allows overriding of passed JVM options by the bundled app itself via java.util.Preferences **(contributed by Hendrik Schreiber)**
+- Allows writing arbitrary key-value pairs to `Info.plist` via `plistentry`
 
 These are the environment variables passed to the JVM:
 
@@ -71,6 +72,9 @@ Example:
             role="editor"
             isPackage="true">
           </bundledocument>
+
+          <!-- Define custom key-value pairs in Info.plist -->
+          <plistentry key="ABCCustomKey" value="foobar"/>
 
           <!-- Workaround as com.apple.mrj.application.apple.menu.about.name property may no longer work -->
           <option value="-Xdock:name=${bundle.name}"/>
