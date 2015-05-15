@@ -26,7 +26,7 @@ These are the environment variables passed to the JVM:
 - `SandboxEnabled` (the String `true` or `false`)
 
 
-Example:
+Example 1:
 
     <target name="bundle">
       <taskdef name="bundleapp" 
@@ -34,7 +34,6 @@ Example:
         classname="com.oracle.appbundler.AppBundlerTask"/>
 
       <bundleapp 
-          jvmrequired="1.7"
           classpathref="runclasspathref"
           outputdirectory="${dist}"
           name="${bundle.name}"
@@ -85,3 +84,52 @@ Example:
           <option value="-Xmx1024M" name="Xmx"/>
       </bundleapp>
     </target>
+
+Example 2, use installed Java but require Java 8 (or later):
+
+    <target name="bundle">
+      <taskdef name="bundleapp" 
+        classpath="appbundler-1.0ea.jar"
+        classname="com.oracle.appbundler.AppBundlerTask"/>
+      <bundleapp 
+          jvmrequired="1.8"
+          classpathref="runclasspathref"
+          outputdirectory="${dist}"
+          name="${bundle.name}"
+          displayname="${bundle.displayname}"
+          executableName="MyApp"
+          identifier="com.company.product"
+          shortversion="${version.public}"
+          version="${version.internal}"
+          icon="${icons.path}/${bundle.icns}"
+          mainclassname="Main"
+          copyright="2012 Your Company"
+          applicationCategory="public.app-category.finance">
+      </bundleapp>
+    </target>
+
+Example 2, use installed Java but require Java 8 (or later) JRE and not a JDK:
+
+    <target name="bundle">
+      <taskdef name="bundleapp" 
+        classpath="appbundler-1.0ea.jar"
+        classname="com.oracle.appbundler.AppBundlerTask"/>
+      <bundleapp 
+          jvmrequired="1.8"
+          jrepreferred="true"
+          classpathref="runclasspathref"
+          outputdirectory="${dist}"
+          name="${bundle.name}"
+          displayname="${bundle.displayname}"
+          executableName="MyApp"
+          identifier="com.company.product"
+          shortversion="${version.public}"
+          version="${version.internal}"
+          icon="${icons.path}/${bundle.icns}"
+          mainclassname="Main"
+          copyright="2012 Your Company"
+          applicationCategory="public.app-category.finance">
+      </bundleapp>
+    </target>
+
+
