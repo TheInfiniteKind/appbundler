@@ -42,7 +42,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.StringTokenizer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -78,7 +77,9 @@ public class AppBundlerTask extends Task {
     private String privileged = null;
     private String workingDirectory = null;
     private String minimumSystemVersion = null;  
-    private String jvmRequired = "1.7";  
+    private String jvmRequired = "1.7";
+    private boolean jrePreferred = false;
+    private boolean jdkPreferred = false;
 
     private String applicationCategory = null;
 
@@ -98,7 +99,7 @@ public class AppBundlerTask extends Task {
     private ArrayList<String> registeredProtocols = new ArrayList<>();
     private ArrayList<BundleDocument> bundleDocuments = new ArrayList<>();
     private ArrayList<PlistEntry> plistEntries = new ArrayList<>();
-    
+
     private Reference classPathRef;
     private ArrayList<String> plistClassPaths = new ArrayList<>();
 
@@ -168,6 +169,14 @@ public class AppBundlerTask extends Task {
         this.jvmRequired = v;
     }
         
+    public void setJREPreferred(boolean preferred){
+        this.jrePreferred = preferred;
+    }
+        
+    public void setJDKPreferred(boolean preferred){
+        this.jdkPreferred = preferred;
+    }
+
     public void setMinimumSystemVersion(String v){
         this.minimumSystemVersion = v;
     }
@@ -209,9 +218,8 @@ public class AppBundlerTask extends Task {
     }
 
     public void setPlistClassPaths(String plistClassPaths) {
-        StringTokenizer tok = new StringTokenizer(plistClassPaths, ", ", false);
-        while (tok.hasMoreTokens()) {
-            this.plistClassPaths.add(tok.nextToken());
+        for (String tok : plistClassPaths.split("\\s*,\\s*")) {
+            this.plistClassPaths.add(tok);
         }
     }
 
@@ -603,6 +611,17 @@ public class AppBundlerTask extends Task {
                 writeProperty(xout, "JVMRunPrivileged", privileged);
             }
             
+            if ( jrePreferred ) {
+                writeKey(xout, "JREPreferred");
+                writeBoolean(xout, true); 
+                xout.writeCharacters("\n");
+            }
+            if ( jdkPreferred ) {
+                writeKey(xout, "JDKPreferred");
+                writeBoolean(xout, true); 
+                xout.writeCharacters("\n");
+            }
+
             if ( workingDirectory != null ) {
                 writeProperty(xout, "WorkingDirectory", workingDirectory);
             }
@@ -610,7 +629,7 @@ public class AppBundlerTask extends Task {
             // Write main class name
             writeProperty(xout, "JVMMainClassName", mainClassName);
 
-            // Write classpaths in plist, if specified
+           // Write classpaths in plist, if specified
             if (!plistClassPaths.isEmpty()) {
                 writeKey(xout, "JVMClassPath");
                 xout.writeStartElement(ARRAY_TAG);
