@@ -119,7 +119,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     if (workingDir != nil) {
         workingDir = [workingDir stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
     } else {
-        workingDir = NSHomeDirectory();
+        workingDir = [[NSFileManager defaultManager] currentDirectoryPath];
     }
     if (isDebugging) {
     	NSLog(@"Working Directory: '%@'", convertRelativeFilePath(workingDir));
