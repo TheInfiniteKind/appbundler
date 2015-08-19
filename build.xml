@@ -69,16 +69,9 @@ questions.
             <isset property="env.JAVA_HOME"/>
         </condition>
 
-        <pathconvert property="osx.sdk.dir">
-            <first>
-                <sort>
-                    <dirset dir="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs" includes="*" />
-                    <reverse>
-                        <date />
-                    </reverse>
-                </sort>
-            </first>
-        </pathconvert>
+        <exec executable="xcrun" outputproperty="osx.sdk.dir">
+            <arg value="--show-sdk-path" />
+        </exec>
 
         <exec executable="${cc}" failonerror="true">
             <arg line="${arch64} ${arch32}"/>
