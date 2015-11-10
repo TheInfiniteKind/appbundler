@@ -242,6 +242,9 @@ public class AppBundlerTask extends Task {
         if (plistEntry.getValue() == null) {
             throw new BuildException("Value is required.");
         }
+        if (plistEntry.getType() == null) {
+            plistEntry.setType(STRING_TAG);
+        }
 
         this.plistEntries.add(plistEntry);
     }
@@ -763,7 +766,7 @@ public class AppBundlerTask extends Task {
             // Write arbitrary key-value pairs
             for (PlistEntry item : plistEntries) {
                 writeKey(xout, item.getKey());
-                writeString(xout, item.getValue());
+                writeValue(xout, item.getType(), item.getValue());
             }
 
             // End root dictionary
@@ -791,6 +794,20 @@ public class AppBundlerTask extends Task {
         xout.writeCharacters(key);
         xout.writeEndElement();
         xout.writeCharacters("\n");
+    }
+
+    private void writeValue(XMLStreamWriter xout, String type, String value) throws XMLStreamException {
+        if (type == null) {
+            type = STRING_TAG;
+        }
+        if ("boolean".equals(type)) {
+            writeBoolean(xout, "true".equals(value));
+        } else {
+            xout.writeStartElement(type);
+            xout.writeCharacters(value);
+            xout.writeEndElement();
+            xout.writeCharacters("\n");
+        }
     }
 
     private void writeString(XMLStreamWriter xout, String value) throws XMLStreamException {

@@ -26,6 +26,7 @@
 package com.oracle.appbundler;
 
 public class PlistEntry extends Option {
+    private String type = null;
 
     public void setKey(String key) {
         setName(key);
@@ -33,5 +34,13 @@ public class PlistEntry extends Option {
 
     public String getKey() {
         return getName();
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public String getType() {
+        return type;
     }
 }
