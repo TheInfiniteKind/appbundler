@@ -41,8 +41,10 @@
 #define JRE_PREFERRED_KEY "JREPreferred"
 #define JDK_PREFERRED_KEY "JDKPreferred"
 #define JVM_DEBUG_KEY "JVMDebug"
+#define IGNORE_PSN_KEY "IgnorePSN"
 
 #define JVM_RUN_PRIVILEGED "JVMRunPrivileged"
+
 
 #define UNSPECIFIED_ERROR "An unknown error occurred."
 
@@ -342,9 +344,34 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     basePath = [paths objectAtIndex:0];                                                                           
     NSString *cachesDirectory = [NSString stringWithFormat:@"-DCachesDirectory=%@", basePath];
 
+    // Remove -psn argument
+    int newProgargc = progargc;
+    char *newProgargv[newProgargc];
+    for (int i = 0; i < progargc; i++) {
+        newProgargv[i] = progargv[i];
+    }
+    
+    bool ignorePSN = [[infoDictionary objectForKey:@IGNORE_PSN_KEY] boolValue];
+    if (ignorePSN) {
+        NSString *psnRegexp = @"^-psn_\\d_\\d+$";
+        NSPredicate *psnTest = [NSPredicate predicateWithFormat:@"SELF MATCHES %@", psnRegexp];
+
+        int shift = 0;
+        int i = 0;
+        while (i < newProgargc) {
+            NSString *s = [NSString stringWithFormat:@"%s", newProgargv[i]];
+            if ([psnTest evaluateWithObject: s]){
+                shift++;
+                newProgargc--;
+            }
+            newProgargv[i] = newProgargv[i+shift];
+            i++;
+        }
+    }
+    
     // Initialize the arguments to JLI_Launch()
     // +5 due to the special directories and the sandbox enabled property
-    int argc = 1 + [options count] + [defaultOptions count] + 2 + [arguments count] + 1 + 5 + progargc;
+    int argc = 1 + [options count] + [defaultOptions count] + 2 + [arguments count] + 1 + 5 + newProgargc;
     char *argv[argc];
 
     int i = 0;
@@ -376,8 +403,8 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     }
 
 	int ctr = 0;
-	for (ctr = 0; ctr < progargc; ctr++) {
-		argv[i++] = progargv[ctr];
+	for (ctr = 0; ctr < newProgargc; ctr++) {
+		argv[i++] = newProgargv[ctr];
 	}
     
     // Print the full command line for debugging purposes...
