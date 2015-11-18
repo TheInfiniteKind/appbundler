@@ -87,6 +87,7 @@ public class AppBundlerTask extends Task {
     private boolean supportsAutomaticGraphicsSwitching = true;
     private boolean hideDockIcon = false;
     private boolean isDebug = false;
+    private boolean ignorePSN = false;
 
     // JVM info properties
     private String mainClassName = null;
@@ -199,6 +200,10 @@ public class AppBundlerTask extends Task {
 
     public void setSupportsAutomaticGraphicsSwitching(boolean supportsAutomaticGraphicsSwitching) {
         this.supportsAutomaticGraphicsSwitching = supportsAutomaticGraphicsSwitching;
+    }
+    
+    public void setIgnorePSN(boolean ignorePSN) {
+        this.ignorePSN = ignorePSN;
     }
 
     public void setMainClassName(String mainClassName) {
@@ -578,6 +583,12 @@ public class AppBundlerTask extends Task {
                 writeBoolean(xout, true); 
                 xout.writeCharacters("\n");
             }
+            if (ignorePSN) {
+                writeKey(xout, "IgnorePSN");
+                writeBoolean(xout, true); 
+                xout.writeCharacters("\n");
+            }
+            
             if(registeredProtocols.size() > 0){
                 writeKey(xout, "CFBundleURLTypes");
                 xout.writeStartElement(ARRAY_TAG);
