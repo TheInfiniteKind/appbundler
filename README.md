@@ -17,6 +17,7 @@ with the following changes:
   sandbox (see below).
 - Allows overriding of passed JVM options by the bundled app itself via java.util.Preferences **(contributed by Hendrik Schreiber)**
 - Allows writing arbitrary key-value pairs to `Info.plist` via `plistentry`
+- Allows setting of environment variables via `Info.plist`
 
 These are the environment variables passed to the JVM:
 
