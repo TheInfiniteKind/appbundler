@@ -99,6 +99,7 @@ public class AppBundlerTask extends Task {
     private ArrayList<String> registeredProtocols = new ArrayList<>();
     private ArrayList<BundleDocument> bundleDocuments = new ArrayList<>();
     private ArrayList<PlistEntry> plistEntries = new ArrayList<>();
+    private ArrayList<Environment> environments = new ArrayList<>();
 
     private Reference classPathRef;
     private ArrayList<String> plistClassPaths = new ArrayList<>();
@@ -247,6 +248,17 @@ public class AppBundlerTask extends Task {
         }
 
         this.plistEntries.add(plistEntry);
+    }
+
+    public void addConfiguredEnvironment(Environment environment) {
+        if (environment.getName() == null) {
+            throw new BuildException("Name is required.");
+        }
+        if (environment.getValue() == null) {
+            throw new BuildException("Value is required.");
+        }
+
+        this.environments.add(environment);
     }
 
     public void addConfiguredOption(Option option) throws BuildException {
@@ -718,6 +730,11 @@ public class AppBundlerTask extends Task {
             xout.writeCharacters("\n");
             writeKey(xout, "LC_CTYPE");
             writeString(xout, "UTF-8");
+
+            for (Environment environment : environments) {
+                writeProperty(xout, environment.getName(), environment.getValue());
+            }
+
             xout.writeEndElement();
             xout.writeCharacters("\n");
 

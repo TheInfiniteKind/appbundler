@@ -193,6 +193,28 @@ Of named options, only the value is passed to the JVM, not the name. The name me
   </tr>
 </table>
 
+<h4>environment</h4>
+<p>Specifies an environment variable set via LSEnvironment entry in the <tt>Info.plist</tt> file. See the
+    <a href="https://developer.apple.com/library/prerelease/mac/documentation/General/Reference/InfoPlistKeyReference/Articles/LaunchServicesKeys.html#//apple_ref/doc/uid/20001431-106825">Apple Documentation</a> for details.</p>
+<p>The string <tt>$APP_ROOT</tt> will be replaced by the application bundle path in all environment variables on runtime.</p>
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr>
+    <td valign="top"><b>Attribute</b></td>
+    <td valign="top"><b>Description</b></td>
+    <td align="center" valign="top"><b>Required</b></td>
+  </tr>
+  <tr>
+    <td valign="top">name</td>
+    <td valign="top">The variable name.</td>
+    <td align="center" valign="top">Yes</td>
+  </tr>
+  <tr>
+    <td valign="top">value</td>
+    <td valign="top">The variable value.</td>
+    <td align="center" valign="top">Yes</td>
+  </tr>
+</table>
+
 <h4>scheme</h4>
 <p>Specifies a protocol for which the bundled application should be registered as a handler.</p>
 <table border="1" cellpadding="2" cellspacing="0">
