@@ -39,6 +39,7 @@ public class BundleDocument {
     private String icon = null;
     private String handlerRank = null;
     private List<String> extensions;
+    private List<String> contentTypes;
     private boolean isPackage = false;
 
     private String capitalizeFirst(String string) {
@@ -47,27 +48,37 @@ public class BundleDocument {
         return new String(stringArray);
     }
     
-    public void setExtensions(String extensionsList) {
-        if(extensionsList == null) {
-            throw new BuildException("Extensions can't be null");
+    public void setExtensions(String extensionsString) {
+        extensions = getListFromCommaSeparatedString(extensionsString, "Extensions");
+    }
+
+    public void setContentTypes(String contentTypesString) {
+        contentTypes = getListFromCommaSeparatedString(contentTypesString, "Content Types");
+    }
+
+    public List<String> getListFromCommaSeparatedString(String listAsString,
+            final String attributeName) {
+        if(listAsString == null) {
+            throw new BuildException(attributeName + " can't be null");
         }
         
-        String[] splitedExtensionsList = extensionsList.split(",");
-        extensions = new ArrayList<String>();
+        String[] splittedListAsString = listAsString.split(",");
+        List<String> stringList = new ArrayList<String>();
         
-        for (String extension : splitedExtensionsList) {
+        for (String extension : splittedListAsString) {
             String cleanExtension = extension.trim().toLowerCase();
             if (cleanExtension.startsWith(".")) {
                 cleanExtension = cleanExtension.substring(1);
             }
             if (cleanExtension.length() > 0) {
-                extensions.add(cleanExtension);
+                stringList.add(cleanExtension);
             }
         }
         
-        if (extensions.size() == 0) {
-            throw new BuildException("Extensions list must not be empty");
+        if (stringList.size() == 0) {
+            throw new BuildException(attributeName + " list must not be empty");
         }
+        return stringList;
     }
     
     public void setIcon(String icon) {
@@ -112,6 +123,10 @@ public class BundleDocument {
     
     public List<String> getExtensions() {
         return extensions;
+    }
+    
+    public List<String> getContentTypes() {
+        return contentTypes;
     }
     
     public File getIconFile() {

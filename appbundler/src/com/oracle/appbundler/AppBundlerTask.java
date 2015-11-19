@@ -42,6 +42,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -238,8 +239,8 @@ public class AppBundlerTask extends Task {
     }
     
     public void addConfiguredBundleDocument(BundleDocument document) {
-        if (document.getExtensions() == null) {
-            throw new BuildException("Document extension is required.");
+        if ((document.getContentTypes() == null) && (document.getExtensions() == null)) {
+            throw new BuildException("Document content type or extension is required.");
         }
         this.bundleDocuments.add(document);
     }
@@ -686,15 +687,33 @@ public class AppBundlerTask extends Task {
             for(BundleDocument bundleDocument: bundleDocuments) {
                 xout.writeStartElement(DICT_TAG);
                 xout.writeCharacters("\n");
-                
-                writeKey(xout, "CFBundleTypeExtensions");
-                xout.writeStartElement(ARRAY_TAG);
-                xout.writeCharacters("\n");
-                for(String extension : bundleDocument.getExtensions()) {
-                    writeString(xout, extension);
+
+                final List<String> contentTypes = bundleDocument.getContentTypes();
+                if (contentTypes != null) {
+                    writeKey(xout, "LSItemContentTypes");
+                    xout.writeStartElement(ARRAY_TAG);
+                    xout.writeCharacters("\n");
+                    for(String contentType : contentTypes) {
+                        writeString(xout, contentType);
+                    }
+                    xout.writeEndElement();
+                    xout.writeCharacters("\n");
+                } else {
+                    final List<String> extensions = bundleDocument.getExtensions();
+                    if (extensions != null) {
+                        writeKey(xout, "CFBundleTypeExtensions");
+                        xout.writeStartElement(ARRAY_TAG);
+                        xout.writeCharacters("\n");
+                        for(String extension : extensions) {
+                            writeString(xout, extension);
+                        }
+                        xout.writeEndElement();
+                        xout.writeCharacters("\n");
+                    }
+                    
+                    writeKey(xout, "LSTypeIsPackage");
+                    writeBoolean(xout, bundleDocument.isPackage());
                 }
-                xout.writeEndElement();
-                xout.writeCharacters("\n");
                 
                 if(bundleDocument.hasIcon()) {
                     writeKey(xout, "CFBundleTypeIconFile");
@@ -723,9 +742,6 @@ public class AppBundlerTask extends Task {
                     writeKey(xout, "LSHandlerRank");
                     writeString(xout, handlerRank);
                 }
-                
-                writeKey(xout, "LSTypeIsPackage");
-                writeBoolean(xout, bundleDocument.isPackage());
                 
                 xout.writeEndElement();
                 xout.writeCharacters("\n");

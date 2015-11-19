@@ -240,10 +240,17 @@ Of named options, only the value is passed to the JVM, not the name. The name me
     <td align="center" valign="top"><b>Required</b></td>
   </tr>
   <tr>
+    <td valign="top">contentTypes</td>
+    <td valign="top">A comma-separated list of <a href="https://developer.apple.com/library/mac/documentation/FileManagement/Conceptual/understanding_utis/understand_utis_intro/understand_utis_intro.html#//apple_ref/doc/uid/TP40001319">Uniform Type Identifiers</a> defining each a supported file type. 
+    If set, <i>extensions</i> and <i>isPackage</i> are ignored. See the <a href="https://developer.apple.com/library/mac/documentation/Miscellaneous/Reference/UTIRef/Articles/System-DeclaredUniformTypeIdentifiers.html">UTI reference</a> for a list of default UTIs.</td>
+    <td valign="top"><tt>LSItemContentTypes</tt></td>
+    <td align="center" valign="top">Yes (or <i>extensions</i>)</td>
+  </tr>
+  <tr>
     <td valign="top">extensions</td>
     <td valign="top">A comma-separated list of filename extensions (minus the leading period) to map to this document type.</td>
     <td valign="top"><tt>CFBundleTypeExtensions</tt></td>
-    <td align="center" valign="top">Yes</td>
+    <td align="center" valign="top">Yes (or <i>contentTypes</i>)</td>
   </tr>
   <tr>
     <td valign="top">icon</td>
@@ -259,7 +266,7 @@ Of named options, only the value is passed to the JVM, not the name. The name me
   </tr>
   <tr>
     <td valign="top">role</td>
-    <td valign="top">This key specifies the app’s role with respect to the type. The value can be <tt>Editor</tt>, <tt>Viewer</tt>, <tt>Shell</tt>, or <tt>None</tt>.</td>
+    <td valign="top">This key specifies the app's role with respect to the type. The value can be <tt>Editor</tt>, <tt>Viewer</tt>, <tt>Shell</tt>, or <tt>None</tt>.</td>
     <td valign="top"><tt>CFBundleTypeRole</tt></td>
     <td align="center" valign="top">No (default: <tt>Editor</tt>)</td>
   </tr>
