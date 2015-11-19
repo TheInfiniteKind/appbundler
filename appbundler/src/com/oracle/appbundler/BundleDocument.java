@@ -40,6 +40,7 @@ public class BundleDocument {
     private String handlerRank = null;
     private List<String> extensions;
     private List<String> contentTypes;
+    private List<String> exportableTypes;
     private boolean isPackage = false;
 
     private String capitalizeFirst(String string) {
@@ -54,6 +55,10 @@ public class BundleDocument {
 
     public void setContentTypes(String contentTypesString) {
         contentTypes = getListFromCommaSeparatedString(contentTypesString, "Content Types");
+    }
+
+    public void setExportableTypes(String exportableTypesString) {
+        exportableTypes = getListFromCommaSeparatedString(exportableTypesString, "Exportable Types");
     }
 
     public List<String> getListFromCommaSeparatedString(String listAsString,
@@ -129,6 +134,10 @@ public class BundleDocument {
         return contentTypes;
     }
     
+    public List<String> getExportableTypes() {
+        return exportableTypes;
+    }
+    
     public File getIconFile() {
         if (icon == null) { return null; }
 
@@ -150,9 +159,24 @@ public class BundleDocument {
     @Override
     public String toString() {
         StringBuilder s = new StringBuilder(getName());
-        s.append(" ").append(getRole()).append(" ").append(getIcon()). append(" ");
-        for(String extension : extensions) {
-            s.append(extension).append(" ");
+        s.append(" ").append(getRole())
+        .append(" ").append(getIcon())
+        .append(" ").append(getHandlerRank())
+        .append(" ");
+        if (contentTypes != null) {
+            for(String contentType : contentTypes) {
+                s.append(contentType).append(" ");
+            }
+        }
+        if (extensions != null) {
+            for(String extension : extensions) {
+                s.append(extension).append(" ");
+            }
+        }
+        if (exportableTypes != null) {
+            for(String exportableType : exportableTypes) {
+                s.append(exportableType).append(" ");
+            }
         }
         
         return s.toString();
