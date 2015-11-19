@@ -33,7 +33,7 @@ import org.apache.tools.ant.BuildException;
 /**
  * Represent a CFBundleDocument.
  */
-public class BundleDocument {
+public class BundleDocument implements IconContainer {
     private String name = null;
     private String role = "Editor";
     private String icon = null;
@@ -50,7 +50,7 @@ public class BundleDocument {
     }
     
     public void setExtensions(String extensionsString) {
-        extensions = getListFromCommaSeparatedString(extensionsString, "Extensions");
+        extensions = getListFromCommaSeparatedString(extensionsString, "Extensions", true);
     }
 
     public void setContentTypes(String contentTypesString) {
@@ -61,8 +61,13 @@ public class BundleDocument {
         exportableTypes = getListFromCommaSeparatedString(exportableTypesString, "Exportable Types");
     }
 
-    public List<String> getListFromCommaSeparatedString(String listAsString,
+    public static List<String> getListFromCommaSeparatedString(String listAsString,
             final String attributeName) {
+        return getListFromCommaSeparatedString(listAsString, attributeName, false);
+    }
+            
+    public static List<String> getListFromCommaSeparatedString(String listAsString,
+            final String attributeName, final boolean lowercase) {
         if(listAsString == null) {
             throw new BuildException(attributeName + " can't be null");
         }
@@ -71,9 +76,9 @@ public class BundleDocument {
         List<String> stringList = new ArrayList<String>();
         
         for (String extension : splittedListAsString) {
-            String cleanExtension = extension.trim().toLowerCase();
-            if (cleanExtension.startsWith(".")) {
-                cleanExtension = cleanExtension.substring(1);
+            String cleanExtension = extension.trim();
+            if (lowercase) {
+                cleanExtension = cleanExtension.toLowerCase();
             }
             if (cleanExtension.length() > 0) {
                 stringList.add(cleanExtension);
