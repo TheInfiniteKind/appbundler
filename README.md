@@ -61,7 +61,7 @@ Example 1:
             handlerRank="owner">
           </bundledocument> 
 
-          <bundledocument extensions="pdf"
+          <bundledocument contentTypes="com.adobe.pdf"
             icon="${icons.path}/${pdf.icns}"
             name="PDF files"
             role="viewer"
