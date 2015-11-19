@@ -613,14 +613,7 @@ public class AppBundlerTask extends Task {
                 xout.writeCharacters("\n");
                 
                 writeProperty(xout, "CFBundleURLName", identifier);
-                writeKey(xout, "CFBundleURLSchemes");
-                xout.writeStartElement(ARRAY_TAG);
-                xout.writeCharacters("\n");
-                for(String scheme:registeredProtocols){
-                    writeString(xout, scheme);
-                }
-                xout.writeEndElement();
-                xout.writeCharacters("\n");
+                writeStringArray(xout, "CFBundleURLSchemes",registeredProtocols);
                 
                 xout.writeEndElement();
                 xout.writeCharacters("\n");
@@ -661,14 +654,7 @@ public class AppBundlerTask extends Task {
 
            // Write classpaths in plist, if specified
             if (!plistClassPaths.isEmpty()) {
-                writeKey(xout, "JVMClassPath");
-                xout.writeStartElement(ARRAY_TAG);
-                xout.writeCharacters("\n");
-                for (String cp : plistClassPaths) {
-                    writeString(xout, cp);
-                }
-                xout.writeEndElement();
-                xout.writeCharacters("\n");
+                writeStringArray(xout,"JVMClassPath",plistClassPaths);
             }
 
             // Write whether launcher be verbose with debug msgs
@@ -690,30 +676,21 @@ public class AppBundlerTask extends Task {
 
                 final List<String> contentTypes = bundleDocument.getContentTypes();
                 if (contentTypes != null) {
-                    writeKey(xout, "LSItemContentTypes");
-                    xout.writeStartElement(ARRAY_TAG);
-                    xout.writeCharacters("\n");
-                    for(String contentType : contentTypes) {
-                        writeString(xout, contentType);
-                    }
-                    xout.writeEndElement();
-                    xout.writeCharacters("\n");
+                    writeStringArray(xout, "LSItemContentTypes", contentTypes);
                 } else {
                     final List<String> extensions = bundleDocument.getExtensions();
                     if (extensions != null) {
-                        writeKey(xout, "CFBundleTypeExtensions");
-                        xout.writeStartElement(ARRAY_TAG);
-                        xout.writeCharacters("\n");
-                        for(String extension : extensions) {
-                            writeString(xout, extension);
-                        }
-                        xout.writeEndElement();
-                        xout.writeCharacters("\n");
+                        writeStringArray(xout, "CFBundleTypeExtensions", extensions);
                     }
                     
                     writeKey(xout, "LSTypeIsPackage");
                     writeBoolean(xout, bundleDocument.isPackage());
                 }
+                
+                final List<String> exportableTypes = bundleDocument.getExportableTypes();
+                if (exportableTypes != null) {
+                    writeStringArray(xout, "NSExportableTypes", exportableTypes);
+                }; 
                 
                 if(bundleDocument.hasIcon()) {
                     writeKey(xout, "CFBundleTypeIconFile");
@@ -751,17 +728,7 @@ public class AppBundlerTask extends Task {
             xout.writeCharacters("\n");
             
             // Write architectures
-            writeKey(xout, "LSArchitecturePriority");
-
-            xout.writeStartElement(ARRAY_TAG);
-            xout.writeCharacters("\n");
-
-            for (String architecture : architectures) {
-                writeString(xout, architecture);
-            }
-
-            xout.writeEndElement();
-            xout.writeCharacters("\n");
+            writeStringArray(xout, "LSArchitecturePriority",architectures);
 
             // Write Environment
             writeKey(xout, "LSEnvironment");
@@ -807,17 +774,7 @@ public class AppBundlerTask extends Task {
             xout.writeCharacters("\n");
 
             // Write arguments
-            writeKey(xout, "JVMArguments");
-
-            xout.writeStartElement(ARRAY_TAG);
-            xout.writeCharacters("\n");
-
-            for (String argument : arguments) {
-                writeString(xout, argument);
-            }
-
-            xout.writeEndElement();
-            xout.writeCharacters("\n");
+            writeStringArray(xout, "JVMArguments",arguments);
 
             // Write arbitrary key-value pairs
             for (PlistEntry item : plistEntries) {
@@ -880,6 +837,18 @@ public class AppBundlerTask extends Task {
     private void writeProperty(XMLStreamWriter xout, String key, String value) throws XMLStreamException {
         writeKey(xout, key);
         writeString(xout, value);
+    }
+
+    public void writeStringArray(XMLStreamWriter xout, final String key,
+            final Iterable<String> values) throws XMLStreamException {
+        writeKey(xout, key);
+        xout.writeStartElement(ARRAY_TAG);
+        xout.writeCharacters("\n");
+        for(String singleValue : values) {
+            writeString(xout, singleValue);
+        }
+        xout.writeEndElement();
+        xout.writeCharacters("\n");
     }
 
     private void writePkgInfo(File file) throws IOException {
