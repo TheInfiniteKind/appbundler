@@ -238,6 +238,9 @@ public class AppBundlerTask extends Task {
     }
     
     public void addConfiguredBundleDocument(BundleDocument document) {
+        if (document.getExtensions() == null) {
+            throw new BuildException("Document extension is required.");
+        }
         this.bundleDocuments.add(document);
     }
 
@@ -706,11 +709,20 @@ public class AppBundlerTask extends Task {
                     }
                 }
                 
-                writeKey(xout, "CFBundleTypeName");
-                writeString(xout, bundleDocument.getName());
+                final String documentName = bundleDocument.getName();
+                if (documentName != null) {
+                    writeKey(xout, "CFBundleTypeName");
+                    writeString(xout, documentName);
+                }
                     
                 writeKey(xout, "CFBundleTypeRole");
                 writeString(xout, bundleDocument.getRole());
+                
+                final String handlerRank = bundleDocument.getHandlerRank();
+                if (handlerRank != null) {
+                    writeKey(xout, "LSHandlerRank");
+                    writeString(xout, handlerRank);
+                }
                 
                 writeKey(xout, "LSTypeIsPackage");
                 writeBoolean(xout, bundleDocument.isPackage());

@@ -57,13 +57,15 @@ Example 1:
           <bundledocument extensions="png,jpg"
             icon="${icons.path}/${image.icns}"
             name="Images"
-            role="editor">
+            role="editor"
+            handlerRank="owner">
           </bundledocument> 
 
           <bundledocument extensions="pdf"
             icon="${icons.path}/${pdf.icns}"
             name="PDF files"
-            role="viewer">
+            role="viewer"
+            handlerRank="alternate">
           </bundledocument>
 
           <bundledocument extensions="custom"

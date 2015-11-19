@@ -230,6 +230,53 @@ Of named options, only the value is passed to the JVM, not the name. The name me
   </tr>
 </table>
 
+<h4>bundledocument</h4>
+<p>Describes a document associated with your application.</p>
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr>
+    <td valign="top"><b>Attribute</b></td>
+    <td valign="top"><b>Description</b></td>
+    <td valign="top"><b>Corresponding <tt>CFBundleDocumentTypes</tt> key</b></td>
+    <td align="center" valign="top"><b>Required</b></td>
+  </tr>
+  <tr>
+    <td valign="top">extensions</td>
+    <td valign="top">A comma-separated list of filename extensions (minus the leading period) to map to this document type.</td>
+    <td valign="top"><tt>CFBundleTypeExtensions</tt></td>
+    <td align="center" valign="top">Yes</td>
+  </tr>
+  <tr>
+    <td valign="top">icon</td>
+    <td valign="top">The name of the icon file (.icns) to associate with this OS X document type.</td>
+    <td valign="top"><tt>CFBundleTypeIconFile</tt></td>
+    <td align="center" valign="top">No (But recommended)</td>
+  </tr>
+  <tr>
+    <td valign="top">name</td>
+    <td valign="top">The abstract name for the document type.</td>
+    <td valign="top"><tt>CFBundleTypeName</tt></td>
+    <td align="center" valign="top">No (But recommended)</td>
+  </tr>
+  <tr>
+    <td valign="top">role</td>
+    <td valign="top">This key specifies the app’s role with respect to the type. The value can be <tt>Editor</tt>, <tt>Viewer</tt>, <tt>Shell</tt>, or <tt>None</tt>.</td>
+    <td valign="top"><tt>CFBundleTypeRole</tt></td>
+    <td align="center" valign="top">No (default: <tt>Editor</tt>)</td>
+  </tr>
+  <tr>
+    <td valign="top">handlerRank</td>
+    <td valign="top">Determines how Launch Services ranks this app among the apps that declare themselves editors or viewers of files of this type. The possible values are: <tt>Owner</tt> (this app is the creator of files of this type), <tt>Alternate</tt> (this app is a secondary viewer of files of this type), <tt>None</tt> (this app must never be used to open files of this type, but it accepts drops of files of this type), <tt>Default</tt> (default; this app doesn't accept drops of files of this type). </td>
+    <td valign="top"><tt>LSHandlerRank</tt></td>
+    <td align="center" valign="top">No</td>
+  </tr>
+  <tr>
+    <td valign="top">isPackage</td>
+    <td valign="top">Specifies whether the document is distributed as a bundle. If set to true, the bundle directory is treated as a file.</td>
+    <td valign="top"><tt>LSTypeIsPackage</tt></td>
+    <td align="center" valign="top">No (default: <tt>false</tt>)</td>
+  </tr>
+</table>
+
 <h3>Examples</h3>
 <p>Generate a launcher for the "Swing Set" demo, bundling the JRE defined by the <tt>JAVA_HOME</tt>
 environment variable with the resulting executable.</p>

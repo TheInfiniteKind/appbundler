@@ -24,6 +24,9 @@
 package com.oracle.appbundler;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.apache.tools.ant.BuildException;
 
 
@@ -31,10 +34,11 @@ import org.apache.tools.ant.BuildException;
  * Represent a CFBundleDocument.
  */
 public class BundleDocument {
-    private String name = "editor";
-    private String role = "";
+    private String name = null;
+    private String role = "Editor";
     private String icon = null;
-    private String[] extensions;
+    private String handlerRank = null;
+    private List<String> extensions;
     private boolean isPackage = false;
 
     private String capitalizeFirst(String string) {
@@ -48,9 +52,21 @@ public class BundleDocument {
             throw new BuildException("Extensions can't be null");
         }
         
-        extensions = extensionsList.split(",");
-        for (String extension : extensions) {
-            extension.trim().toLowerCase();
+        String[] splitedExtensionsList = extensionsList.split(",");
+        extensions = new ArrayList<String>();
+        
+        for (String extension : splitedExtensionsList) {
+            String cleanExtension = extension.trim().toLowerCase();
+            if (cleanExtension.startsWith(".")) {
+                cleanExtension = cleanExtension.substring(1);
+            }
+            if (cleanExtension.length() > 0) {
+                extensions.add(cleanExtension);
+            }
+        }
+        
+        if (extensions.size() == 0) {
+            throw new BuildException("Extensions list must not be empty");
         }
     }
     
@@ -66,6 +82,10 @@ public class BundleDocument {
       this.role = capitalizeFirst(role);
     }
     
+    public void setHandlerRank(String handlerRank) {
+      this.handlerRank = capitalizeFirst(handlerRank);
+    } 
+      
     public void setIsPackage(String isPackageString) {
         if(isPackageString.trim().equalsIgnoreCase("true")) {
             this.isPackage = true;
@@ -85,8 +105,12 @@ public class BundleDocument {
     public String getRole() {
         return role;
     }
+
+    public String getHandlerRank() {
+        return handlerRank;
+    }
     
-    public String[] getExtensions() {
+    public List<String> getExtensions() {
         return extensions;
     }
     
