@@ -100,6 +100,8 @@ public class AppBundlerTask extends Task {
     private ArrayList<String> architectures = new ArrayList<>();
     private ArrayList<String> registeredProtocols = new ArrayList<>();
     private ArrayList<BundleDocument> bundleDocuments = new ArrayList<>();
+    private ArrayList<TypeDeclaration> exportedTypeDeclarations = new ArrayList<>();
+    private ArrayList<TypeDeclaration> importedTypeDeclarations = new ArrayList<>();
     private ArrayList<PlistEntry> plistEntries = new ArrayList<>();
     private ArrayList<Environment> environments = new ArrayList<>();
 
@@ -245,6 +247,17 @@ public class AppBundlerTask extends Task {
         this.bundleDocuments.add(document);
     }
 
+    public void addConfiguredTypeDeclaration(TypeDeclaration typeDeclaration) {
+        if (typeDeclaration.getIdentifier() == null) {
+            throw new BuildException("Type declarations must have an identifier.");
+        }
+        if (typeDeclaration.isImported()) {
+            this.importedTypeDeclarations.add(typeDeclaration);
+        } else {
+            this.exportedTypeDeclarations.add(typeDeclaration);
+        }
+    }
+    
     public void addConfiguredPlistEntry(PlistEntry plistEntry) {
         if (plistEntry.getKey() == null) {
             throw new BuildException("Name is required.");
@@ -425,13 +438,10 @@ public class AppBundlerTask extends Task {
             copyIcon(resourcesDirectory);
 
             // Copy app document icons to Resources folder
-            for(BundleDocument bundleDocument: bundleDocuments) {
-                if(bundleDocument.hasIcon()) {
-                    File ifile = bundleDocument.getIconFile();
-                    if (ifile != null) {
-                        copyDocumentIcon(ifile,resourcesDirectory); }
-                }
-            }
+            copyDocumentIcons(bundleDocuments, resourcesDirectory);
+            copyDocumentIcons(exportedTypeDeclarations, resourcesDirectory);
+            copyDocumentIcons(importedTypeDeclarations, resourcesDirectory);
+            
         } catch (IOException exception) {
             throw new BuildException(exception);
         }
@@ -532,8 +542,20 @@ public class AppBundlerTask extends Task {
         }
     }
 
+    public void copyDocumentIcons(final ArrayList<? extends IconContainer> iconContainers,
+            File resourcesDirectory) throws IOException {
+        for(IconContainer iconContainer: iconContainers) {
+            if(iconContainer.hasIcon()) {
+                File ifile = iconContainer.getIconFile();
+                if (ifile != null) {
+                    copyDocumentIcon(ifile,resourcesDirectory); 
+                }
+            }
+        }
+    }
+
     private void copyDocumentIcon(File ifile, File resourcesDirectory) throws IOException {
-        if (icon == null) {
+        if (ifile == null) {
             return;
         } else {
             copy(ifile, new File(resourcesDirectory, ifile.getName()));
@@ -577,33 +599,14 @@ public class AppBundlerTask extends Task {
             writeProperty(xout, "CFBundleVersion", version);
             writeProperty(xout, "CFBundleSignature", signature);
             writeProperty(xout, "NSHumanReadableCopyright", copyright);
-            if ( minimumSystemVersion != null ){
-                writeProperty(xout, "LSMinimumSystemVersion", minimumSystemVersion);
-            }
-            if (applicationCategory != null) {
-                writeProperty(xout, "LSApplicationCategoryType", applicationCategory);
-            }
-            if(hideDockIcon){
-                writeKey(xout, "LSUIElement");
-                writeBoolean(xout, true); 
-                xout.writeCharacters("\n");
-            }
-            if (highResolutionCapable) {
-                writeKey(xout, "NSHighResolutionCapable");
-                writeBoolean(xout, true); 
-                xout.writeCharacters("\n");
-            }
-
-            if (supportsAutomaticGraphicsSwitching) {
-                writeKey(xout, "NSSupportsAutomaticGraphicsSwitching");
-                writeBoolean(xout, true); 
-                xout.writeCharacters("\n");
-            }
-            if (ignorePSN) {
-                writeKey(xout, "IgnorePSN");
-                writeBoolean(xout, true); 
-                xout.writeCharacters("\n");
-            }
+            writeProperty(xout, "LSMinimumSystemVersion", minimumSystemVersion);
+            writeProperty(xout, "LSApplicationCategoryType", applicationCategory);
+            writeProperty(xout, "LSUIElement",hideDockIcon);
+            writeProperty(xout, "NSHighResolutionCapable",highResolutionCapable);
+            writeProperty(xout, "NSSupportsAutomaticGraphicsSwitching",
+                        supportsAutomaticGraphicsSwitching);
+            writeProperty(xout, "IgnorePSN",ignorePSN);
+            
             
             if(registeredProtocols.size() > 0){
                 writeKey(xout, "CFBundleURLTypes");
@@ -626,106 +629,39 @@ public class AppBundlerTask extends Task {
                 writeProperty(xout, "JVMRuntime", runtime.getDir().getParentFile().getParentFile().getName());
             }
             
-            if ( jvmRequired != null ) {
-                writeProperty(xout, "JVMVersion", jvmRequired);
-            }
+            writeProperty(xout, "JVMVersion", jvmRequired);
             
-            if ( privileged != null ) {
-                writeProperty(xout, "JVMRunPrivileged", privileged);
-            }
+            writeProperty(xout, "JVMRunPrivileged", privileged);
             
-            if ( jrePreferred ) {
-                writeKey(xout, "JREPreferred");
-                writeBoolean(xout, true); 
-                xout.writeCharacters("\n");
-            }
-            if ( jdkPreferred ) {
-                writeKey(xout, "JDKPreferred");
-                writeBoolean(xout, true); 
-                xout.writeCharacters("\n");
-            }
+            writeProperty(xout, "JREPreferred", jrePreferred);
+            writeProperty(xout, "JDKPreferred", jdkPreferred);
 
-            if ( workingDirectory != null ) {
-                writeProperty(xout, "WorkingDirectory", workingDirectory);
-            }
+            writeProperty(xout, "WorkingDirectory", workingDirectory);
 
             // Write main class name
             writeProperty(xout, "JVMMainClassName", mainClassName);
 
            // Write classpaths in plist, if specified
             if (!plistClassPaths.isEmpty()) {
-                writeStringArray(xout,"JVMClassPath",plistClassPaths);
+                writeStringArray(xout,"JVMClassPath", plistClassPaths);
             }
 
             // Write whether launcher be verbose with debug msgs
-            if (isDebug) {
-                writeKey(xout, "JVMDebug");
-                writeBoolean(xout, isDebug);
-                xout.writeCharacters("\n");
-            }
+            writeProperty(xout, "JVMDebug", isDebug);
 
             // Write CFBundleDocument entries
             writeKey(xout, "CFBundleDocumentTypes");
+            writeBundleDocuments(xout, bundleDocuments);
             
-            xout.writeStartElement(ARRAY_TAG);
-            xout.writeCharacters("\n");
-            
-            for(BundleDocument bundleDocument: bundleDocuments) {
-                xout.writeStartElement(DICT_TAG);
-                xout.writeCharacters("\n");
-
-                final List<String> contentTypes = bundleDocument.getContentTypes();
-                if (contentTypes != null) {
-                    writeStringArray(xout, "LSItemContentTypes", contentTypes);
-                } else {
-                    final List<String> extensions = bundleDocument.getExtensions();
-                    if (extensions != null) {
-                        writeStringArray(xout, "CFBundleTypeExtensions", extensions);
-                    }
-                    
-                    writeKey(xout, "LSTypeIsPackage");
-                    writeBoolean(xout, bundleDocument.isPackage());
-                }
-                
-                final List<String> exportableTypes = bundleDocument.getExportableTypes();
-                if (exportableTypes != null) {
-                    writeStringArray(xout, "NSExportableTypes", exportableTypes);
-                }; 
-                
-                if(bundleDocument.hasIcon()) {
-                    writeKey(xout, "CFBundleTypeIconFile");
-
-                    File ifile = bundleDocument.getIconFile();
-                    
-                    if (ifile != null) {
-                        writeString(xout, ifile.getName());
-                    }
-                    else {
-                        writeString(xout, bundleDocument.getIcon());
-                    }
-                }
-                
-                final String documentName = bundleDocument.getName();
-                if (documentName != null) {
-                    writeKey(xout, "CFBundleTypeName");
-                    writeString(xout, documentName);
-                }
-                    
-                writeKey(xout, "CFBundleTypeRole");
-                writeString(xout, bundleDocument.getRole());
-                
-                final String handlerRank = bundleDocument.getHandlerRank();
-                if (handlerRank != null) {
-                    writeKey(xout, "LSHandlerRank");
-                    writeString(xout, handlerRank);
-                }
-                
-                xout.writeEndElement();
-                xout.writeCharacters("\n");
+            // Write Type Declarations
+            if (! exportedTypeDeclarations.isEmpty()) {
+                writeKey(xout, "UTExportedTypeDeclarations");
+                writeTypeDeclarations(xout, exportedTypeDeclarations);
             }
-            
-            xout.writeEndElement();
-            xout.writeCharacters("\n");
+            if (! importedTypeDeclarations.isEmpty()) {
+                writeKey(xout, "UTImportedTypeDeclarations");
+                writeTypeDeclarations(xout, importedTypeDeclarations);
+            }
             
             // Write architectures
             writeStringArray(xout, "LSArchitecturePriority",architectures);
@@ -765,8 +701,7 @@ public class AppBundlerTask extends Task {
 
             for (Option option : options) {
                 if (option.getName() != null) {
-                    writeKey(xout, option.getName());
-                    writeString(xout, option.getValue());
+                    writeProperty(xout, option.getName(), option.getValue());
                 }
             }
 
@@ -832,25 +767,111 @@ public class AppBundlerTask extends Task {
     
     private void writeBoolean(XMLStreamWriter xout, boolean value) throws XMLStreamException {
         xout.writeEmptyElement(value ? "true" : "false");
+        xout.writeCharacters("\n");
     }
 
-    private void writeProperty(XMLStreamWriter xout, String key, String value) throws XMLStreamException {
-        writeKey(xout, key);
-        writeString(xout, value);
+    private void writeProperty(XMLStreamWriter xout, String key, Boolean value) throws XMLStreamException {
+        if (value != null && value) {
+            writeKey(xout, key);
+            writeBoolean(xout, true);
+        }
+    }
+    
+    private void writeProperty(XMLStreamWriter xout, String key, Object value) throws XMLStreamException {
+        if (value != null) {
+            writeKey(xout, key);
+            writeString(xout, value.toString());
+        }
     }
 
     public void writeStringArray(XMLStreamWriter xout, final String key,
             final Iterable<String> values) throws XMLStreamException {
-        writeKey(xout, key);
-        xout.writeStartElement(ARRAY_TAG);
-        xout.writeCharacters("\n");
-        for(String singleValue : values) {
-            writeString(xout, singleValue);
+        if (values != null) {
+            writeKey(xout, key);
+            xout.writeStartElement(ARRAY_TAG);
+            xout.writeCharacters("\n");
+            for(String singleValue : values) {
+                writeString(xout, singleValue);
+            }
+            xout.writeEndElement();
+            xout.writeCharacters("\n");
         }
+    }
+
+    public void writeBundleDocuments(XMLStreamWriter xout,
+            final ArrayList<BundleDocument> bundleDocuments) throws XMLStreamException {
+        
+        xout.writeStartElement(ARRAY_TAG);
+        xout.writeCharacters("\n");            
+        
+        for(BundleDocument bundleDocument: bundleDocuments) {
+            xout.writeStartElement(DICT_TAG);
+            xout.writeCharacters("\n");
+
+            final List<String> contentTypes = bundleDocument.getContentTypes();
+            if (contentTypes != null) {
+                writeStringArray(xout, "LSItemContentTypes", contentTypes);
+            } else {
+                writeStringArray(xout, "CFBundleTypeExtensions", bundleDocument.getExtensions());
+                writeProperty(xout, "LSTypeIsPackage", bundleDocument.isPackage());
+            }
+            writeStringArray(xout, "NSExportableTypes", bundleDocument.getExportableTypes());
+            
+            
+            final File ifile = bundleDocument.getIconFile();
+            writeProperty(xout, "CFBundleTypeIconFile", ifile != null ?
+                        ifile.getName() : bundleDocument.getIcon());
+            
+            writeProperty(xout, "CFBundleTypeName", bundleDocument.getName());
+            writeProperty(xout, "CFBundleTypeRole", bundleDocument.getRole());
+            writeProperty(xout, "LSHandlerRank", bundleDocument.getHandlerRank());
+            
+            xout.writeEndElement();
+            xout.writeCharacters("\n");
+        }
+        
         xout.writeEndElement();
         xout.writeCharacters("\n");
     }
 
+    public void writeTypeDeclarations(XMLStreamWriter xout,
+            final ArrayList<TypeDeclaration> typeDeclarations) throws XMLStreamException {
+        xout.writeStartElement(ARRAY_TAG);
+        xout.writeCharacters("\n");
+        for (TypeDeclaration typeDeclaration: typeDeclarations) {
+        
+            xout.writeStartElement(DICT_TAG);
+            xout.writeCharacters("\n");
+   
+            writeProperty(xout, "UTTypeIdentifier", typeDeclaration.getIdentifier());
+            writeProperty(xout, "UTTypeReferenceURL", typeDeclaration.getReferenceUrl());
+            writeProperty(xout, "UTTypeDescription", typeDeclaration.getDescription());
+
+            final File ifile = typeDeclaration.getIconFile();
+            writeProperty(xout, "UTTypeIconFile", ifile != null ?
+                        ifile.getName() : typeDeclaration.getIcon());
+
+            writeStringArray(xout, "UTTypeConformsTo", typeDeclaration.getConformsTo());
+
+            writeKey(xout, "UTTypeTagSpecification");
+
+            xout.writeStartElement(DICT_TAG);
+            xout.writeCharacters("\n");
+
+            writeStringArray(xout, "com.apple.ostype", typeDeclaration.getOsTypes());
+            writeStringArray(xout, "public.filename-extension", typeDeclaration.getExtensions());
+            writeStringArray(xout, "public.mime-type", typeDeclaration.getMimeTypes());
+            
+            xout.writeEndElement();
+            xout.writeCharacters("\n");
+            
+            xout.writeEndElement();
+            xout.writeCharacters("\n");
+        }
+        
+        xout.writeEndElement();
+        xout.writeCharacters("\n");
+    }
     private void writePkgInfo(File file) throws IOException {
         Writer out = new BufferedWriter(new FileWriter(file));
 
