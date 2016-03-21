@@ -11,15 +11,15 @@ with the following changes:
 - Adds `classpathref` support to the `bundleapp` task
 - Adds support for `JVMArchs` and `LSArchitecturePriority` keys
 - Allows to specify a custom value for `CFBundleVersion` 
-- Allows specifying registered file extensions using `CFBundleDocumentTypes`
-- Passes to the Java application a set of environment variables with the paths of
+- Allows specifying registered file extensions using `CFBundleDocumentTypes` and `UT[Ex|Im]portedTypeDeclarations`
+- Passes to the Java application a set of system properties with the paths of
   the OSX special folders and whether the application is running in the
   sandbox (see below).
 - Allows overriding of passed JVM options by the bundled app itself via java.util.Preferences **(contributed by Hendrik Schreiber)**
 - Allows writing arbitrary key-value pairs to `Info.plist` via `plistentry`
 - Allows setting of environment variables via `Info.plist`
 
-These are the environment variables passed to the JVM:
+These are the system properties passed to the JVM:
 
 - `LibraryDirectory`
 - `DocumentsDirectory`
@@ -27,6 +27,8 @@ These are the environment variables passed to the JVM:
 - `ApplicationSupportDirectory`
 - `SandboxEnabled` (the String `true` or `false`)
 
+
+For more details, please refer to the [task documentation](http://htmlpreview.github.io/?https://bitbucket.org/infinitekind/appbundler/raw/tip/appbundler/doc/appbundler.html).
 
 Example 1:
 
@@ -57,24 +59,43 @@ Example 1:
           <bundledocument extensions="png,jpg"
             icon="${icons.path}/${image.icns}"
             name="Images"
-            role="editor">
+            role="editor"
+            handlerRank="owner">
           </bundledocument> 
 
-          <bundledocument extensions="pdf"
-            icon="${icons.path}/${pdf.icns}"
+          <bundledocument contentTypes="com.adobe.pdf"
             name="PDF files"
-            role="viewer">
+            role="viewer"
+            handlerRank="alternate">
           </bundledocument>
-
-          <bundledocument extensions="custom"
-            icon="${icons.path}/${data.icns}"
+          
+          <bundledocument contentTypes="com.my.custom"
             name="Custom data"
             role="editor"
-            isPackage="true">
+            exportableTypes="com.topografix.gpx">
           </bundledocument>
-
+          
+          <typedeclaration
+            identifier="com.my.custom"
+            description="Custom data"
+            icon="${icons.path}/${data.icns}"
+            conformsTo="com.apple.package"
+            extensions="custom"
+            mimeTypes="application/x-custom" />
+        
+          <typedeclaration
+      	   imported = "true"
+            identifier="com.topografix.gpx"
+            referenceUrl="http://www.topografix.com/GPX/1/1/"
+            description="GPS Exchange Format (GPX)"
+            conformsTo="public.xml"
+            extensions="gpx"
+            mimeTypes="application/gpx+xml" />
+          
+          
           <!-- Define custom key-value pairs in Info.plist -->
           <plistentry key="ABCCustomKey" value="foobar"/>
+          <plistentry key="ABCCustomBoolean" value="true" type="boolean"/>
 
           <!-- Workaround as com.apple.mrj.application.apple.menu.about.name property may no longer work -->
           <option value="-Xdock:name=${bundle.name}"/>
