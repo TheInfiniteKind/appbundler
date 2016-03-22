@@ -456,15 +456,18 @@ NSString * findJavaDylib (
 {
     int required = extractMajorVersion(jvmRequired);
 
-    if (required < 7) { required = 7; }
+    if (required < 7)
+    {
+        if (isDebugging) { NSLog (@"Required JVM must be at least ver. 7."); }
+        required = 7;
+    }
 
     if (isDebugging) {
         NSLog (@"Searching for a Java %d", required);
     }
 
-//  Try the "java -version" command and see if we get a 1.7 or later response 
-//  (note that for unknown but ancient reasons, the result is output to stderr).
-//  If we do then return address for dylib that should be in the JRE package.
+    //  First, if a JRE is acceptible, try to find one with required Java version.
+    //  If found, return address for dylib that should be in the JRE package.
     if (jdkPreferred) {
         if (isDebugging) {
             NSLog (@"A JDK is preferred; will not search for a JRE.");
@@ -478,9 +481,9 @@ NSString * findJavaDylib (
         if (isDebugging) { NSLog (@"No matching JRE found."); }
     }
 
-//  Having failed to find a JRE in the usual location, see if a JDK is installed
-//  (probably in /Library/Java/JavaVirtualMachines). If so, return address of
-//  dylib in the JRE within the JDK.
+    // If JRE not found or if JDK preferred, look for an acceptable JDK
+    // (probably in /Library/Java/JavaVirtualMachines if so). If found,
+    // return return address of dylib in the JRE within the JDK.
     if (jrePreferred) {
         if (isDebugging) {
             NSLog (@"A JRE is preferred; will not search for a JDK.");
@@ -504,9 +507,11 @@ NSString * findJREDylib (
         int jvmRequired,
         bool isDebugging)
 {
-//  Try the "java -version" command and see if we get a 1.7 or later response
-//  (note that for unknown but ancient reasons, the result is output to stderr).
-//  If we do then return address for dylib that should be in the JRE package.
+    // Try the "java -version" shell command and see if we get a response and
+    // if so whether the version  is acceptable.
+    // If found, return address for dylib that should be in the JRE package.
+    // Note that for unknown but ancient reasons, the result is output to stderr
+    // rather than to stdout.
     @try
     {
         NSTask *task = [[NSTask alloc] init];
@@ -656,7 +661,7 @@ NSString * findJDKDylib (
 
 /**
  *  Extract the Java major version number from a string. We expect the input
- *  to look like either either "1.X", "1.X.Y_ZZ" or "jkd1.X.Y_ZZ", and the 
+ *  to look like either either "1.X", "1.X.Y_ZZ" or "jdk1.X.Y_ZZ", and the 
  *  returned result will be the integral value of X. Any failure to parse the
  *  string will return 0.
  */
@@ -664,8 +669,8 @@ int extractMajorVersion (NSString *vstring)
 {
     if (vstring == nil) { return 0; }
 
-//  Expecting either a java version of form 1.X.Y_ZZ or jkd1.X.Y_ZZ.
-//  Strip off everything at start up to and including the "1."
+//  Expecting either a java version of form 1.X, 1.X.Y_ZZ or jdk1.X.Y_ZZ.
+//  Strip off everything from start of req string up to and including the "1."
     NSUInteger vstart = [vstring rangeOfString:@"1."].location;
 
     if (vstart == NSNotFound) { return 0; }
@@ -680,7 +685,7 @@ int extractMajorVersion (NSString *vstring)
         return [vstring intValue];
     }
 
-//  Strip off everything beginning at that dot.
+//  Strip off everything beginning at that second dot.
     vstring = [vstring substringToIndex:vdot];
 
 //  And convert what's left to an int.
