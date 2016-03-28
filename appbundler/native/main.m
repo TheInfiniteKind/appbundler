@@ -159,7 +159,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     NSString *javaDylib;
 
     if (runtime != nil) {
-        NSString *dylibRelPath = [runtime hasSuffix:@".jdk"]
+        NSString *dylibRelPath = [runtime hasSuffix:@".jre"] || [runtime hasSuffix:@".jdk"]
                     ? @"Contents/Home/jre/lib/jli/libjli.dylib"
                     : @"Contents/Home/lib/jli/libjli.dylib";
         javaDylib = [runtimePath stringByAppendingPathComponent:dylibRelPath];
