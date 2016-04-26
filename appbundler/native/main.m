@@ -576,6 +576,8 @@ NSString * findJREDylib (
     {
         NSLog (@"JRE search exception: '%@'", [exception reason]);
     }
+
+    return nil;
 }
 
 /**
