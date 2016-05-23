@@ -159,11 +159,19 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     NSString *javaDylib;
 
     if (runtime != nil) {
-        NSString *dylibRelPath = [runtime hasSuffix:@".jre"] || [runtime hasSuffix:@".jdk"]
-                    ? @"Contents/Home/jre/lib/jli/libjli.dylib"
-                    : @"Contents/Home/lib/jli/libjli.dylib";
+        NSString *dylibRelPath = @"Contents/Home/jre/lib/jli/libjli.dylib";
         javaDylib = [runtimePath stringByAppendingPathComponent:dylibRelPath];
-
+        BOOL isDir;
+        NSFileManager *fm = [[NSFileManager alloc] init];
+        BOOL javaDylibFileExists = [fm fileExistsAtPath:javaDylib isDirectory:&isDir];
+        if (!javaDylibFileExists || isDir) {
+            dylibRelPath = @"Contents/Home/lib/jli/libjli.dylib";
+            javaDylib = [runtimePath stringByAppendingPathComponent:dylibRelPath];
+            javaDylibFileExists = [fm fileExistsAtPath:javaDylib isDirectory:&isDir];
+                if (!javaDylibFileExists || isDir) {
+                    javaDylib = NULL;
+                }
+        }
         if (isDebugging) {
             NSLog(@"Java Runtime Path (relative): '%@'", runtimePath);
         }
