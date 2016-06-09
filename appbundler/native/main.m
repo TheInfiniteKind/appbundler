@@ -76,6 +76,7 @@ NSString * findJREDylib (int, bool);
 NSString * findJDKDylib (int, bool);
 int extractMajorVersion (NSString *);
 NSString * convertRelativeFilePath(NSString *);
+NSString * addDirectoryToSystemArguments(NSUInteger, NSSearchPathDomainMask, NSString *, NSMutableArray *);
 
 int main(int argc, char *argv[]) {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -221,6 +222,9 @@ int launch(char *commandName, int progargc, char *progargv[]) {
             reason:NSLocalizedString(@"MainClassNameRequired", @UNSPECIFIED_ERROR)
             userInfo:nil] raise];
     }
+    if (isDebugging) {
+    	NSLog(@"Main Class Name: '%@'", mainClassName);
+    }
 
     // Set the class path
     NSString *mainBundlePath = [mainBundle bundlePath];
@@ -237,8 +241,12 @@ int launch(char *commandName, int progargc, char *progargv[]) {
             reason:NSLocalizedString(@"BundlePathContainsColon", @UNSPECIFIED_ERROR)
             userInfo:nil] raise];
     }
+    if (isDebugging) {
+    	NSLog(@"Main Bundle Path: '%@'", mainBundlePath);
+    }
 
     NSString *javaPath = [mainBundlePath stringByAppendingString:@"/Contents/Java"];
+    NSMutableArray *systemArguments = [[NSMutableArray alloc] init];
     NSMutableString *classPath = [NSMutableString stringWithString:@"-Djava.class.path="];
 
     NSArray *cp = [infoDictionary objectForKey:@JVM_CLASSPATH_KEY];
@@ -269,13 +277,15 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         for (NSString *file in cp) {
             if (k++ > 0) [classPath appendString:@":"]; // add separator if needed
             file = [file stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
-            [classPath appendString:file];
-        }
-    }
-    
-    // Set the library path
+              [classPath appendString:file];
+          }
+      }
+    [systemArguments addObject:classPath];
+  
+	// Set the library path
     NSString *libraryPath = [NSString stringWithFormat:@"-Djava.library.path=%@/Contents/MacOS", mainBundlePath];
-
+    [systemArguments addObject:libraryPath];
+  
     // Get the VM options
     NSArray *options = [infoDictionary objectForKey:@JVM_OPTIONS_KEY];
     if (options == nil) {
@@ -315,11 +325,27 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     }
 
     // Set OSX special folders
-    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory,   
-            NSUserDomainMask, YES);                                            
-    NSString *basePath = [paths objectAtIndex:0];                                                                           
-    NSString *libraryDirectory = [NSString stringWithFormat:@"-DLibraryDirectory=%@", basePath];
-    NSString *containersDirectory = [basePath stringByAppendingPathComponent:@"Containers"];
+    NSString * libraryDirectory = addDirectoryToSystemArguments(NSLibraryDirectory, NSUserDomainMask, @"LibraryDirectory", systemArguments);
+    addDirectoryToSystemArguments(NSDocumentDirectory, NSUserDomainMask, @"DocumentsDirectory", systemArguments);
+    addDirectoryToSystemArguments(NSApplicationSupportDirectory, NSUserDomainMask, @"ApplicationSupportDirectory", systemArguments);
+    addDirectoryToSystemArguments(NSCachesDirectory, NSUserDomainMask, @"CachesDirectory", systemArguments);
+    addDirectoryToSystemArguments(NSApplicationDirectory, NSUserDomainMask, @"ApplicationDirectory", systemArguments);
+    addDirectoryToSystemArguments(NSAutosavedInformationDirectory, NSUserDomainMask, @"AutosavedInformationDirectory", systemArguments);
+    addDirectoryToSystemArguments(NSDesktopDirectory, NSUserDomainMask, @"DesktopDirectory", systemArguments);
+    addDirectoryToSystemArguments(NSDownloadsDirectory, NSUserDomainMask, @"DownloadsDirectory", systemArguments);
+    addDirectoryToSystemArguments(NSMoviesDirectory, NSUserDomainMask, @"MoviesDirectory", systemArguments);
+    addDirectoryToSystemArguments(NSMusicDirectory, NSUserDomainMask, @"MusicDirectory", systemArguments);
+    addDirectoryToSystemArguments(NSPicturesDirectory, NSUserDomainMask, @"PicturesDirectory", systemArguments);
+    addDirectoryToSystemArguments(NSSharedPublicDirectory, NSUserDomainMask, @"SharedPublicDirectory", systemArguments);
+    
+    addDirectoryToSystemArguments(NSLibraryDirectory, NSLocalDomainMask, @"SystemLibraryDirectory", systemArguments);
+    addDirectoryToSystemArguments(NSApplicationSupportDirectory, NSLocalDomainMask, @"SystemApplicationSupportDirectory", systemArguments);
+    addDirectoryToSystemArguments(NSCachesDirectory, NSLocalDomainMask, @"SystemCachesDirectory", systemArguments);
+    addDirectoryToSystemArguments(NSApplicationDirectory, NSLocalDomainMask, @"SystemApplicationDirectory", systemArguments);
+    addDirectoryToSystemArguments(NSUserDirectory, NSLocalDomainMask, @"SystemUserDirectory", systemArguments);
+    
+	//Sandbox
+    NSString *containersDirectory = [libraryDirectory stringByAppendingPathComponent:@"Containers"];
     NSString *sandboxEnabled = @"false";
     BOOL isDir;
     NSFileManager *fm = [[NSFileManager alloc] init];
@@ -328,21 +354,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         sandboxEnabled = @"true";
     }
     NSString *sandboxEnabledVar = [NSString stringWithFormat:@"-DSandboxEnabled=%@", sandboxEnabled];
-    
-    paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,           
-            NSUserDomainMask, YES);                                            
-    basePath = [paths objectAtIndex:0];                                                                           
-    NSString *documentsDirectory = [NSString stringWithFormat:@"-DDocumentsDirectory=%@", basePath];
-                                                                               
-    paths = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, 
-            NSUserDomainMask, YES);                                            
-    basePath = [paths objectAtIndex:0];                                                                           
-    NSString *applicationSupportDirectory = [NSString stringWithFormat:@"-DApplicationSupportDirectory=%@", basePath];
-                                                                               
-    paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, 
-            NSUserDomainMask, YES);                                            
-    basePath = [paths objectAtIndex:0];                                                                           
-    NSString *cachesDirectory = [NSString stringWithFormat:@"-DCachesDirectory=%@", basePath];
+    [systemArguments addObject:sandboxEnabledVar];
 
     // Remove -psn argument
     int newProgargc = progargc;
@@ -381,18 +393,14 @@ int launch(char *commandName, int progargc, char *progargv[]) {
 
     // Initialize the arguments to JLI_Launch()
     // +5 due to the special directories and the sandbox enabled property
-    int argc = 1 + [options count] + [defaultOptions count] + 2 + [arguments count] + 1 + 5 + newProgargc;
+    int argc = 1 + [systemArguments count] + [options count] + [defaultOptions count] + 1 + [arguments count] + newProgargc;
     char *argv[argc];
 
     int i = 0;
     argv[i++] = commandName;
-    argv[i++] = strdup([classPath UTF8String]);
-    argv[i++] = strdup([libraryPath UTF8String]);
-    argv[i++] = strdup([libraryDirectory UTF8String]);
-    argv[i++] = strdup([documentsDirectory UTF8String]);
-    argv[i++] = strdup([applicationSupportDirectory UTF8String]);
-    argv[i++] = strdup([cachesDirectory UTF8String]);
-    argv[i++] = strdup([sandboxEnabledVar UTF8String]);
+    for (NSString *systemArgument in systemArguments) {
+    	argv[i++] = strdup([systemArgument UTF8String]);
+    }
 
     for (NSString *option in options) {
         option = [option stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
@@ -696,4 +704,16 @@ int extractMajorVersion (NSString *vstring)
 
 NSString * convertRelativeFilePath(NSString * path) {
     return [path stringByStandardizingPath];
+}
+
+NSString * addDirectoryToSystemArguments(NSUInteger searchPath, NSSearchPathDomainMask domainMask, 
+		NSString *systemProperty, NSMutableArray *systemArguments) {
+	NSArray *paths = NSSearchPathForDirectoriesInDomains(searchPath,domainMask, YES);
+    if ([paths count] > 0) {
+		NSString *basePath = [paths objectAtIndex:0];
+		NSString *directory = [NSString stringWithFormat:@"-D%@=%@", systemProperty, basePath];
+		[systemArguments addObject:directory];
+		return basePath;
+    }
+    return nil;
 }
