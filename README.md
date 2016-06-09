@@ -25,6 +25,19 @@ These are the system properties passed to the JVM:
 - `DocumentsDirectory`
 - `CachesDirectory`
 - `ApplicationSupportDirectory`
+- `ApplicationDirectory`
+- `AutosavedInformationDirectory`
+- `DesktopDirectory`
+- `DownloadsDirectory`
+- `MoviesDirectory`
+- `MusicDirectory`
+- `PicturesDirectory`
+- `SharedPublicDirectory`
+- `SystemLibraryDirectory`
+- `SystemApplicationSupportDirectory`
+- `SystemCachesDirectory`
+- `SystemApplicationDirectory`
+- `SystemUserDirectory`
 - `SandboxEnabled` (the String `true` or `false`)
 
 
