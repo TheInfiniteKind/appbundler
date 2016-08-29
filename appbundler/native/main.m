@@ -492,10 +492,12 @@ NSString * findJavaDylib (
     else {
         NSString * dylib = findJDKDylib (required, isDebugging);
 
-        return dylib;
+        if (dylib != nil) { return dylib; }
 
         if (isDebugging) { NSLog (@"No matching JDK found."); }
     }
+
+    NSLog (@"No matching JRE or JDK found.");
 
     return nil;
 }
