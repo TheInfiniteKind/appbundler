@@ -165,7 +165,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         javaDylib = [runtimePath stringByAppendingPathComponent:dylibRelPath];
 
         if (isDebugging) {
-            NSLog(@"Java Runtime Path (relative): '%@'", runtimePath);
+            NSLog(@"Java Runtime (%@) Relative Path: '%@' (dylib: %@)", runtime, runtimePath, javaDylib);
         }
     }
     else {
@@ -209,6 +209,9 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         else {
             msg = NSLocalizedString(@"JRELoadError", @UNSPECIFIED_ERROR);
         }
+        
+        NSLog(@"Error launching JVM Runtime (%@) Relative Path: '%@' (dylib: %@)\n  error: %@",
+              runtime, runtimePath, javaDylib, msg);
 
         [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
                 reason:msg userInfo:nil] raise];

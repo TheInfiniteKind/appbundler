@@ -78,7 +78,7 @@ public class AppBundlerTask extends Task {
     private String privileged = null;
     private String workingDirectory = null;
     private String minimumSystemVersion = null;  
-    private String jvmRequired = "1.7";
+    private String jvmRequired = null;
     private boolean jrePreferred = false;
     private boolean jdkPreferred = false;
 
@@ -629,7 +629,9 @@ public class AppBundlerTask extends Task {
                 writeProperty(xout, "JVMRuntime", runtime.getDir().getParentFile().getParentFile().getName());
             }
             
-            writeProperty(xout, "JVMVersion", jvmRequired);
+            if(jvmRequired != null) {
+                writeProperty(xout, "JVMVersion", jvmRequired);
+            }
             
             writeProperty(xout, "JVMRunPrivileged", privileged);
             
