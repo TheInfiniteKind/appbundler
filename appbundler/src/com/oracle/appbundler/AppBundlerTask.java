@@ -78,7 +78,7 @@ public class AppBundlerTask extends Task {
     private String privileged = null;
     private String workingDirectory = null;
     private String minimumSystemVersion = null;  
-    private String jvmRequired = "1.7";
+    private String jvmRequired = null;
     private boolean jrePreferred = false;
     private boolean jdkPreferred = false;
 
@@ -629,7 +629,9 @@ public class AppBundlerTask extends Task {
                 writeProperty(xout, "JVMRuntime", runtime.getDir().getParentFile().getParentFile().getName());
             }
             
-            writeProperty(xout, "JVMVersion", jvmRequired);
+            if(jvmRequired != null) {
+                writeProperty(xout, "JVMVersion", jvmRequired);
+            }
             
             writeProperty(xout, "JVMRunPrivileged", privileged);
             
@@ -916,9 +918,9 @@ public class AppBundlerTask extends Task {
 
         destination.getParentFile().mkdirs();
 
-        Files.copy(sourcePath, destinationPath, StandardCopyOption.REPLACE_EXISTING, LinkOption.NOFOLLOW_LINKS);
+        Files.copy(sourcePath, destinationPath, StandardCopyOption.REPLACE_EXISTING);
 
-        if (Files.isDirectory(sourcePath, LinkOption.NOFOLLOW_LINKS)) {
+        if (Files.isDirectory(sourcePath)) {
             String[] files = source.list();
 
             for (int i = 0; i < files.length; i++) {
