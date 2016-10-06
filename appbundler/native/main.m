@@ -160,13 +160,21 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     NSString *javaDylib;
 
     if (runtime != nil) {
-        NSString *dylibRelPath = [runtime hasSuffix:@".jre"] || [runtime hasSuffix:@".jdk"]
-                    ? @"Contents/Home/jre/lib/jli/libjli.dylib"
-                    : @"Contents/Home/lib/jli/libjli.dylib";
+        NSString *dylibRelPath = @"Contents/Home/jre/lib/jli/libjli.dylib";
         javaDylib = [runtimePath stringByAppendingPathComponent:dylibRelPath];
-
+        BOOL isDir;
+        NSFileManager *fm = [[NSFileManager alloc] init];
+        BOOL javaDylibFileExists = [fm fileExistsAtPath:javaDylib isDirectory:&isDir];
+        if (!javaDylibFileExists || isDir) {
+            dylibRelPath = @"Contents/Home/lib/jli/libjli.dylib";
+            javaDylib = [runtimePath stringByAppendingPathComponent:dylibRelPath];
+            javaDylibFileExists = [fm fileExistsAtPath:javaDylib isDirectory:&isDir];
+                if (!javaDylibFileExists || isDir) {
+                    javaDylib = NULL;
+                }
+        }
         if (isDebugging) {
-            NSLog(@"Java Runtime Path (relative): '%@'", runtimePath);
+            NSLog(@"Java Runtime (%@) Relative Path: '%@' (dylib: %@)", runtime, runtimePath, javaDylib);
         }
     }
     else {
@@ -210,6 +218,9 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         else {
             msg = NSLocalizedString(@"JRELoadError", @UNSPECIFIED_ERROR);
         }
+        
+        NSLog(@"Error launching JVM Runtime (%@) Relative Path: '%@' (dylib: %@)\n  error: %@",
+              runtime, runtimePath, javaDylib, msg);
 
         [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
                 reason:msg userInfo:nil] raise];
@@ -500,10 +511,12 @@ NSString * findJavaDylib (
     else {
         NSString * dylib = findJDKDylib (required, isDebugging);
 
-        return dylib;
+        if (dylib != nil) { return dylib; }
 
         if (isDebugging) { NSLog (@"No matching JDK found."); }
     }
+
+    NSLog (@"No matching JRE or JDK found.");
 
     return nil;
 }
