@@ -173,7 +173,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
                 }
         }
         if (isDebugging) {
-            NSLog(@"Java Runtime Path (relative): '%@'", runtimePath);
+            NSLog(@"Java Runtime (%@) Relative Path: '%@' (dylib: %@)", runtime, runtimePath, javaDylib);
         }
     }
     else {
@@ -217,6 +217,9 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         else {
             msg = NSLocalizedString(@"JRELoadError", @UNSPECIFIED_ERROR);
         }
+        
+        NSLog(@"Error launching JVM Runtime (%@) Relative Path: '%@' (dylib: %@)\n  error: %@",
+              runtime, runtimePath, javaDylib, msg);
 
         [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
                 reason:msg userInfo:nil] raise];
@@ -500,10 +503,12 @@ NSString * findJavaDylib (
     else {
         NSString * dylib = findJDKDylib (required, isDebugging);
 
-        return dylib;
+        if (dylib != nil) { return dylib; }
 
         if (isDebugging) { NSLog (@"No matching JDK found."); }
     }
+
+    NSLog (@"No matching JRE or JDK found.");
 
     return nil;
 }
