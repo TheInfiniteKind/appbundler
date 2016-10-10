@@ -38,6 +38,7 @@ These are the system properties passed to the JVM:
 - `SystemCachesDirectory`
 - `SystemApplicationDirectory`
 - `SystemUserDirectory`
+- `UserHome`  (the user's home directory, even if running within a sandbox)
 - `SandboxEnabled` (the String `true` or `false`)
 
 

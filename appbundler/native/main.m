@@ -27,6 +27,7 @@
 #import <Cocoa/Cocoa.h>
 #include <dlfcn.h>
 #include <jni.h>
+#include <pwd.h>
 
 #define JAVA_LAUNCH_ERROR "JavaLaunchError"
 
@@ -355,7 +356,17 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     addDirectoryToSystemArguments(NSApplicationDirectory, NSLocalDomainMask, @"SystemApplicationDirectory", systemArguments);
     addDirectoryToSystemArguments(NSUserDirectory, NSLocalDomainMask, @"SystemUserDirectory", systemArguments);
     
-	//Sandbox
+    // get the user's home directory, independent of the sandbox container
+    int bufsize;
+    if ((bufsize = sysconf(_SC_GETPW_R_SIZE_MAX)) != -1) {
+        char buffer[bufsize];
+        struct passwd pwd, *result = NULL;
+        if (getpwuid_r(getuid(), &pwd, buffer, bufsize, &result) == 0 && result) {
+            [systemArguments addObject:[NSString stringWithFormat:@"-DUserHome=%s", pwd.pw_dir]];
+        }
+    }
+    
+    //Sandbox
     NSString *containersDirectory = [libraryDirectory stringByAppendingPathComponent:@"Containers"];
     NSString *sandboxEnabled = @"false";
     BOOL isDir;
