@@ -13,8 +13,8 @@ with the following changes:
 - Allows to specify a custom value for `CFBundleVersion` 
 - Allows specifying registered file extensions using `CFBundleDocumentTypes` and `UT[Ex|Im]portedTypeDeclarations`
 - Passes to the Java application a set of system properties with the paths of
-  the OSX special folders and whether the application is running in the
-  sandbox (see below).
+  the OSX special folders, whether the application is running in the
+  sandbox (see below) and which modifier keys are held down while opening the app. With the latter, the Java application can mimic the behavior of e.g. iTunes or Photos to select another or create a new media library on startup with the option key.
 - Allows overriding of passed JVM options by the bundled app itself via java.util.Preferences **(contributed by Hendrik Schreiber)**
 - Allows writing arbitrary key-value pairs to `Info.plist` via `plistentry`
 - Allows setting of environment variables via `Info.plist`
@@ -40,6 +40,15 @@ These are the system properties passed to the JVM:
 - `SystemUserDirectory`
 - `UserHome`  (the user's home directory, even if running within a sandbox)
 - `SandboxEnabled` (the String `true` or `false`)
+- `LaunchModifierFlagCapsLock` (the String `true` or `false`)
+- `LaunchModifierFlagShift` (the String `true` or `false`)
+- `LaunchModifierFlagControl` (the String `true` or `false`)
+- `LaunchModifierFlagOption` (the String `true` or `false`)
+- `LaunchModifierFlagCommand` (the String `true` or `false`)
+- `LaunchModifierFlagNumericPad` (the String `true` or `false`)
+- `LaunchModifierFlagHelp` (the String `true` or `false`)
+- `LaunchModifierFlagFunction` (the String `true` or `false`)
+- `LaunchModifierFlags` (an Integer)
 
 
 For more details, please refer to the [task documentation](http://htmlpreview.github.io/?https://bitbucket.org/infinitekind/appbundler/raw/tip/appbundler/doc/appbundler.html).
