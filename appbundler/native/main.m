@@ -738,8 +738,8 @@ NSString * findJREDylib (
         if (errRead != nil) {
             int version = 0;
 
-            // REVIEW: does not yet take Java 9+ into account which has 'java version "9"' as version string - discarding the 1.
-            NSRange vrange = [errRead rangeOfString:@"java version \"1."];
+            // The result of the version command is 'java version "1.x"' or 'java version "9"'
+            NSRange vrange = [errRead rangeOfString:@"java version \""];
 
             if (vrange.location != NSNotFound) {
                 NSString *vstring = [errRead substringFromIndex:(vrange.location + 14)];
@@ -824,6 +824,14 @@ NSString * findJDKDylib (
         int version = 0;
 
         NSRange vrange = [outRead rangeOfString:@"jdk1."];
+        if (vrange.location == NSNotFound) {
+            // try the changed version layout from version 9
+            vrange = [outRead rangeOfString:@"jdk-"];
+            vrange.location += 4;
+        } else {
+            // otherwise remove the leading jdk
+            vrange.location += 3;
+        }
 
         if (vrange.location != NSNotFound) {
             NSString *vstring = [outRead substringFromIndex:(vrange.location)];
@@ -857,7 +865,7 @@ NSString * findJDKDylib (
 
 /**
  *  Extract the Java major version number from a string. We expect the input
- *  to look like either either "1.X", "1.X.Y_ZZ" or "jdk1.X.Y_ZZ", and the 
+ *  to look like either either "1.X", "1.X.Y_ZZ" or "X.Y.ZZ", and the 
  *  returned result will be the integral value of X. Any failure to parse the
  *  string will return 0.
  */
@@ -869,9 +877,10 @@ int extractMajorVersion (NSString *vstring)
 //  Strip off everything from start of req string up to and including the "1."
     NSUInteger vstart = [vstring rangeOfString:@"1."].location;
 
-    if (vstart == NSNotFound) { return 0; }
-
-    vstring = [vstring substringFromIndex:(vstart+2)];
+    if (vstart != NSNotFound) {
+        // this is the version < 9 layout. Remove the leading 1.
+        vstring = [vstring substringFromIndex:(vstart+2)];
+    }
 
 //  Now find the dot after the major version number, if present.
     NSUInteger vdot = [vstring rangeOfString:@"."].location;
