@@ -69,7 +69,11 @@ questions.
             <isset property="env.JAVA_HOME"/>
         </condition>
 
-        <exec executable="${cc}">
+        <exec executable="xcrun" outputproperty="osx.sdk.dir">
+            <arg value="--show-sdk-path" />
+        </exec>
+
+        <exec executable="${cc}" failonerror="true">
             <arg line="${arch64} ${arch32}"/>
             <arg value="-I"/>
             <arg value="${javahome}/include"/>
@@ -83,8 +87,10 @@ questions.
             <arg value="-F"/>
             <arg value="${javahome}/../.."/>
             <arg value="-isysroot"/>
-            <arg value="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk"/>
-            <arg value="-mmacosx-version-min=10.7"/>
+            <arg value="${osx.sdk.dir}"/>
+            <arg value="-mmacosx-version-min=10.7"/> 
+            <arg value="-fobjc-exceptions"/>
+            <arg value="-std=c99"/>
             <arg value="appbundler/native/main.m"/>
         </exec>
     </target>
@@ -124,6 +130,7 @@ questions.
             classpath="${ant.project.name}/${folder.bin}/${ant.project.name}-${version}.jar"/>
 
         <bundleapp outputdirectory="."
+            debug="true"
             name="Test"
             displayname="Test"
             identifier="com.oracle.javafx.swing.Test"
@@ -131,7 +138,7 @@ questions.
             applicationCategory="public.app-category.developer-tools"
             mainclassname="com/javafx/main/Main">
             <runtime dir="${env.JAVA_HOME}"/>
-            <classpath file="${user.home}/bin/javafx-samples-2.2.0/SwingInterop.jar"/>
+            <classpath file="${ant.project.name}/SwingInterop.jar"/>
             <option value="-Dapple.laf.useScreenMenuBar=true"/>
             <argument value="foo=bar"/>
         </bundleapp>
@@ -142,13 +149,14 @@ questions.
             classpath="${ant.project.name}/${folder.bin}/${ant.project.name}-${version}.jar"/>
 
         <bundleapp outputdirectory="."
+            debug="true"
             name="TestPlugin"
             displayname="Test (Plugin)"
             identifier="com.oracle.javafx.swing.TestPlugin"
             shortversion="1.0"
             applicationCategory="public.app-category.developer-tools"
             mainclassname="com/javafx/main/Main">
-            <classpath file="${user.home}/bin/javafx-samples-2.2.0/SwingInterop.jar"/>
+            <classpath file="${ant.project.name}/SwingInterop.jar"/>
             <option value="-Dapple.laf.useScreenMenuBar=true"/>
             <argument value="foo=bar"/>
         </bundleapp>
