@@ -49,6 +49,12 @@
 #define LIBJLI_DY_LIB "lib/jli/libjli.dylib"
 #define DEPLOY_LIB    "lib/deploy.jar"
 
+//*
+    #define DLog(...) NSLog(@"%s %@", __PRETTY_FUNCTION__, [NSString stringWithFormat:__VA_ARGS__])
+/*/
+    #define DLog(...) do { } while (0)
+//*/
+
 typedef int (JNICALL *JLI_Launch_t)(int argc, char ** argv,
                                     int jargc, const char** jargv,
                                     int appclassc, const char** appclassv,
@@ -107,6 +113,7 @@ int launch(int inputArgc, char *intputArgv[]) {
         workingDir = NSHomeDirectory();
     }
     
+    DLog(@"setting working directory: %@", workingDir);
     chdir([workingDir UTF8String]);
            
     // execute privileged
@@ -124,7 +131,7 @@ int launch(int inputArgc, char *intputArgv[]) {
         
         NSString *script =  [NSString stringWithFormat:@"do shell script \"\\\"%@\\\" > /dev/null 2>&1 &\" with administrator privileges", [NSString stringWithCString:commandName encoding:NSASCIIStringEncoding]];
         
-        // NSLog(@"script: %@", script);
+        DLog(@"script: %@", script);
         NSAppleScript *appleScript = [[NSAppleScript new] initWithSource:script];
         if ([appleScript executeAndReturnError:&error]) {
             // This means we successfully elevated the application and can stop in here.
@@ -147,7 +154,7 @@ int launch(int inputArgc, char *intputArgv[]) {
     libjliPath = [[runtime stringByAppendingPathComponent:@LIBJLI_DY_LIB] fileSystemRepresentation];
     const_appclasspath = [[runtime stringByAppendingPathComponent:@DEPLOY_LIB] fileSystemRepresentation];
     
-    // NSLog(@"Launchpath: %s", libjliPath);
+    DLog(@"Launchpath: %s", libjliPath);
 
     void *libJLI = dlopen(libjliPath, RTLD_LAZY);
 
@@ -364,13 +371,13 @@ int launch(int inputArgc, char *intputArgv[]) {
     for (NSString *option in options) {
         option = [option stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
         argv[i++] = strdup([option UTF8String]);
-        // NSLog(@"Option: %@",option);
+        DLog(@"Option: %@",option);
     }
 
     for (NSString *defaultOption in defaultOptions) {
         defaultOption = [defaultOption stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
         argv[i++] = strdup([defaultOption UTF8String]);
-        // NSLog(@"DefaultOption: %@",defaultOption);
+        DLog(@"DefaultOption: %@",defaultOption);
     }
 
     argv[i++] = strdup([mainClassName UTF8String]);
@@ -435,7 +442,7 @@ const char * tmpFile() {
  */
 NSString * findDylib ( )
 {
-    NSLog (@"Searching for a JRE.");
+    DLog (@"Searching for a JRE.");
 
 //  Try the "java -version" command and see if we get a 1.7 or 1.8 response (note 
 //  that for unknown but ancient reasons, the result is output to stderr). If we
