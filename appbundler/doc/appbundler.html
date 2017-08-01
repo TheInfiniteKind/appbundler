@@ -264,40 +264,23 @@ environment variable with the resulting executable.</p>
         shortversion="1.0"
         icon="icon.icns"
         applicationCategory="public.app-category.developer-tools"
-        jnlplaunchername="SwingSet2.jnlp"&gt;
+        jnlplaunchername="Contents/_CodeSignature/SwingSet2.jnlp"&gt;
         
         &lt;value="-Xdock:icon=Contents/Resources/icon.icns" /&gt;
         &lt;option value="-Dapple.laf.useScreenMenuBar=true"/&gt;
     &lt;/bundleapp&gt;
 
     &lt;!-- Optionally copy an original file --&gt;
-    &lt;copy todir="./SwingSet2.app/Contents/Java" includeemptydirs="true" overwrite="false"&gt;
+    &lt;copy todir="./SwingSet2.app/Contents/_CodeSignature" includeemptydirs="true" overwrite="false"&gt;
         &lt;fileset dir="."&gt;
             &lt;include name="**/*.jnlp" /&gt;
         &lt;/fileset&gt;
     &lt;/copy&gt;
 	
-    &lt;echo file="${copyroot}/buildRules.xml" append="false"&gt;&lt;![CDATA[
-&lt;?xml version="1.0" encoding="UTF-8"?&gt;
-&lt;!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"&gt;
-&lt;plist version="1.0"&gt;
-    &lt;dict&gt;
-        &lt;key&gt;rules&lt;/key&gt;
-        &lt;dict&gt;
-            &lt;key&gt;^Java/&lt;/key&gt;
-            &lt;true/&gt;
-            &lt;key&gt;^Java/.*\.jnlp/&lt;/key&gt;
-            &lt;false/&gt;
-        &lt;/dict&gt;
-    &lt;/dict&gt;
-&lt;/plist&gt;
-    ]]&gt;&lt;/echo&gt;
-			
     &lt;!-- Sign File --&gt;
     &lt;exec executable="codesign" os="Mac OS X" failonerror="true"&gt;
         &lt;arg value="-f" /&gt;
         &lt;arg value="--deep" /&gt;
-        &lt;arg value="--resource-rules=${copyroot}/buildRules.xml" /&gt;
         &lt;arg value="-s" /&gt;
         &lt;arg value="Developer ID Application" /&gt;
         &lt;arg value="./app/SwingSet2.app" /&gt;
