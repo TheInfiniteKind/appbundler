@@ -83,9 +83,9 @@ static int launchCount = 0;
 const char * tmpFile();
 int launch(char *, int, char **);
 
-NSString * findJavaDylib (NSString *, bool, bool, bool);
-NSString * findJREDylib (int, bool);
-NSString * findJDKDylib (int, bool);
+NSString * findJavaDylib (NSString *, bool, bool, bool, bool);
+NSString * findJREDylib (int, bool, bool);
+NSString * findJDKDylib (int, bool, bool);
 int extractMajorVersion (NSString *);
 NSString * convertRelativeFilePath(NSString *);
 NSString * addDirectoryToSystemArguments(NSUInteger, NSSearchPathDomainMask, NSString *, NSMutableArray *);
@@ -130,10 +130,10 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     NSDictionary *infoDictionary = [mainBundle infoDictionary];
     
     // Test for debugging (but only on the second runthrough)
-    bool isDebugging = (launchCount > 0) && [[infoDictionary objectForKey:@JVM_DEBUG_KEY] boolValue];
+    bool isDebugging = [[infoDictionary objectForKey:@JVM_DEBUG_KEY] boolValue];
     
     if (isDebugging) {
-        DLog(@"Loading Application '%@'", [infoDictionary objectForKey:@"CFBundleName"]);
+        DLog(@"\n\n\n\nLoading Application '%@'", [infoDictionary objectForKey:@"CFBundleName"]);
     }
     
     // Set the working directory based on config, defaulting to the user's home directory
@@ -173,15 +173,37 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     NSString *runtimePath = [[mainBundle builtInPlugInsPath] stringByAppendingPathComponent:runtime];
 
     NSString *jvmRequired = [infoDictionary objectForKey:@JVM_VERSION_KEY];
+    bool exactVersionMatch = false;
     bool jrePreferred = [[infoDictionary objectForKey:@JRE_PREFERRED_KEY] boolValue];
     bool jdkPreferred = [[infoDictionary objectForKey:@JDK_PREFERRED_KEY] boolValue];
-
+    
     if (jrePreferred && jdkPreferred) {
         DLog(@"Specifying both JRE- and JDK-preferred means neither is preferred");
         jrePreferred = false;
         jdkPreferred = false;
     }
 
+    // check for jnlp launcher name
+    // This basically circumvents the security problems introduced with 10.8.4 that JNLP Files must be signed to execute them without CTRL+CLick -> Open
+    // See: How to sign (dynamic) JNLP files for OSX 10.8.4 and Gatekeeper http://stackoverflow.com/questions/16958130/how-to-sign-dynamic-jnlp-files-for-osx-10-8-4-and-gatekeeper
+    // There is no solution to properly sign a dynamic jnlp file to date. Both Apple and Oracle have open rdars/tickets on this.
+    // The following mechanism encapsulates a JNLP file/template. It makes a temporary copy when executing. This ensures that the JNLP file can be updates from the server at runtime.
+    // YES, this may insert additional security threats, but it is still the only way to avoid permission problems.
+    // It is highly recommended that the resulting .app container is being signed with a certificate from Apple - otherwise you will not need this mechanism.
+    // Moved up here to check if we want to launch a JNLP. If so: make sure the version is below 9
+    NSString *jnlplauncher = [infoDictionary objectForKey:@JVM_RUN_JNLP];
+    if ( jnlplauncher != nil ) {
+        int required = 8;
+        if ( jvmRequired != nil ) {
+            required = extractMajorVersion (jvmRequired);
+            if (required > 8) { required = 8; }
+        }
+        
+        exactVersionMatch = true;
+        jvmRequired = [NSString stringWithFormat:@"1.%i", required];
+        DLog(@"Will Require a JVM version '%i' due to JNLP restrictions", required);
+    }
+    
     NSString *javaDylib;
 
     // If a runtime is set, we really want it. If it is not there, we will fail later on.
@@ -205,7 +227,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     }
     else {
         // Search for the runtimePath, then make it a libjli.dylib path.
-        runtimePath = findJavaDylib (jvmRequired, jrePreferred, jdkPreferred, isDebugging);
+        runtimePath = findJavaDylib (jvmRequired, jrePreferred, jdkPreferred, isDebugging, exactVersionMatch);
         javaDylib = [runtimePath stringByAppendingPathComponent:@LIBJLI_DY_LIB];
 
         if (isDebugging) {
@@ -318,7 +340,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     }
     
     // Get the application arguments
-    NSMutableArray *arguments = [infoDictionary objectForKey:@JVM_ARGUMENTS_KEY];
+    NSMutableArray *arguments = [[infoDictionary objectForKey:@JVM_ARGUMENTS_KEY] mutableCopy];
     if (arguments == nil) {
         arguments = [NSMutableArray array];
     }
@@ -326,15 +348,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     // Check for a defined JAR File below the Contents/Java folder
     // If set, use this instead of a classpath setting
     NSString *jarlauncher = [infoDictionary objectForKey:@JVM_RUN_JAR];
-    
-    // check for jnlp launcher name
-    // This basically circumvents the security problems introduced with 10.8.4 that JNLP Files must be signed to execute them without CTRL+CLick -> Open
-    // See: How to sign (dynamic) JNLP files for OSX 10.8.4 and Gatekeeper http://stackoverflow.com/questions/16958130/how-to-sign-dynamic-jnlp-files-for-osx-10-8-4-and-gatekeeper
-    // There is no solution to properly sign a dynamic jnlp file to date. Both Apple and Oracle have open rdars/tickets on this.
-    // The following mechanism encapsulates a JNLP file/template. It makes a temporary copy when executing. This ensures that the JNLP file can be updates from the server at runtime.
-    // YES, this may insert additional security threats, but it is still the only way to avoid permission problems.
-    // It is highly recommended that the resulting .app container is being signed with a certificate from Apple - otherwise you will not need this mechanism.
-    NSString *jnlplauncher = [infoDictionary objectForKey:@JVM_RUN_JNLP];
+
     // Get the main class name
     NSString *mainClassName = [infoDictionary objectForKey:@JVM_MAIN_CLASS_NAME_KEY];
 
@@ -358,11 +372,11 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         [options addObject:@"-Djnlpx.remove=true"];
         [options addObject:@"-DtrustProxy=true"];
         
-        [options addObject:[NSString stringWithFormat:@"-Djava.security.policy=file:%@/lib/security/javaws.policy", runtime]];
-        [options addObject:[NSString stringWithFormat:@"-Xbootclasspath/a:%@/lib/javaws.jar:%@/lib/deploy.jar:%@/lib/plugin.jar", runtime, runtime, runtime]];
+        [options addObject:[NSString stringWithFormat:@"-Djava.security.policy=file:%@/lib/security/javaws.policy", runtimePath]];
+        [options addObject:[NSString stringWithFormat:@"-Xbootclasspath/a:%@/lib/javaws.jar:%@/lib/deploy.jar:%@/lib/plugin.jar", runtimePath, runtimePath, runtimePath]];
         
         // Argument that javaws does also
-        [arguments addObject:@"-noWebStart"];
+        // [arguments addObject:@"-noWebStart"];
         
         // Copy the jnlp to a temporary location
         NSError *copyerror = nil;
@@ -437,7 +451,9 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         }
     }
 
-    [systemArguments addObject:classPath];
+    if ( classPath != nil ) {
+        [systemArguments addObject:classPath];
+    }
 
     // Set OSX special folders
     NSString * libraryDirectory = addDirectoryToSystemArguments(NSLibraryDirectory, NSUserDomainMask, @"LibraryDirectory", systemArguments);
@@ -639,7 +655,8 @@ NSString * findJavaDylib (
         NSString *jvmRequired,
         bool jrePreferred,
         bool jdkPreferred,
-        bool isDebugging)
+        bool isDebugging,
+        bool exactMatch)
 {
     DLog (@"Searching for a JRE.");
     int required = extractMajorVersion(jvmRequired);
@@ -662,7 +679,7 @@ NSString * findJavaDylib (
         }
     }
     else {
-        NSString * dylib = findJREDylib (required, isDebugging);
+        NSString * dylib = findJREDylib (required, isDebugging, exactMatch);
 
         if (dylib != nil) { return dylib; }
 
@@ -678,7 +695,7 @@ NSString * findJavaDylib (
         }
     }
     else {
-        NSString * dylib = findJDKDylib (required, isDebugging);
+        NSString * dylib = findJDKDylib (required, isDebugging, exactMatch);
 
         if (dylib != nil) { return dylib; }
 
@@ -695,7 +712,8 @@ NSString * findJavaDylib (
  */
 NSString * findJREDylib (
         int jvmRequired,
-        bool isDebugging)
+        bool isDebugging,
+        bool exactMatch)
 {
     // Try the "java -version" shell command and see if we get a response and
     // if so whether the version  is acceptable.
@@ -755,7 +773,7 @@ NSString * findJREDylib (
                 }
             }
 
-            if ( version >= jvmRequired ) {
+            if ( (version >= jvmRequired && !exactMatch) || (version == jvmRequired && exactMatch) ) {
                 if (isDebugging) {
                     DLog (@"JRE version qualifies");
                 }
@@ -779,14 +797,15 @@ NSString * findJREDylib (
  */
 NSString * findJDKDylib (
         int jvmRequired,
-        bool isDebugging)
+        bool isDebugging,
+        bool exactMatch)
 {
     @try
     {
         NSTask *task = [[NSTask alloc] init];
         [task setLaunchPath:@"/usr/libexec/java_home"];
 
-        NSArray *args = [NSArray arrayWithObjects: @"-v", @"1.7+", nil];
+        NSArray *args = [NSArray arrayWithObjects: @"-v", [NSString stringWithFormat:@"1.%i%@", jvmRequired, exactMatch?@"":@"+"], nil];
         [task setArguments:args];
 
         NSPipe *stdout = [NSPipe pipe];
@@ -847,7 +866,7 @@ NSString * findJDKDylib (
             }
         }
 
-        if ( version >= jvmRequired ) {
+        if ( (version >= jvmRequired && !exactMatch) || (version == jvmRequired && exactMatch) ) {
             if (isDebugging) {
                 DLog (@"JDK version qualifies");
             }
@@ -865,7 +884,7 @@ NSString * findJDKDylib (
 
 /**
  *  Extract the Java major version number from a string. We expect the input
- *  to look like either either "1.X", "1.X.Y_ZZ" or "X.Y.ZZ", and the 
+ *  to look like either either "1.X", "1.X.Y_ZZ" or "X.Y.ZZ", and the
  *  returned result will be the integral value of X. Any failure to parse the
  *  string will return 0.
  */
