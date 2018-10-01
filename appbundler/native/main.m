@@ -882,39 +882,34 @@ NSString * findJDKDylib (
     return nil;
 }
 
+
 /**
  *  Extract the Java major version number from a string. We expect the input
  *  to look like either either "1.X", "1.X.Y_ZZ" or "X.Y.ZZ", and the
  *  returned result will be the integral value of X. Any failure to parse the
  *  string will return 0.
  */
-int extractMajorVersion (NSString *vstring)
-{
-    if (vstring == nil) { return 0; }
-
-//  Expecting either a java version of form 1.X, 1.X.Y_ZZ or jdk1.X.Y_ZZ.
-//  Strip off everything from start of req string up to and including the "1."
-    NSUInteger vstart = [vstring rangeOfString:@"1."].location;
-
-    if (vstart != NSNotFound) {
-        // this is the version < 9 layout. Remove the leading 1.
-        vstring = [vstring substringFromIndex:(vstart+2)];
-    }
-
-//  Now find the dot after the major version number, if present.
-    NSUInteger vdot = [vstring rangeOfString:@"."].location;
-
-//  No second dot, so return int of what we have.
-    if (vdot == NSNotFound) {
-        return [vstring intValue];
-    }
-
-//  Strip off everything beginning at that second dot.
-    vstring = [vstring substringToIndex:vdot];
-
-//  And convert what's left to an int.
-    return [vstring intValue];
+int extractMajorVersion (NSString *vstring) {
+  if (vstring == nil) { return 0; }
+  
+  //  Expecting either a java version of form 1.X, 1.X.Y_ZZ or jdk1.X.Y_ZZ.
+  //  Strip everything from start and ending that aren't part of the version number
+  NSCharacterSet* nonDigits = [[NSCharacterSet characterSetWithCharactersInString:@"0123456789."] invertedSet];
+  vstring = [vstring stringByTrimmingCharactersInSet:nonDigits];
+  
+  if([vstring hasPrefix:@"1."]) {  // this is the version < 9 layout. Remove the leading "1."
+    vstring = [vstring substringFromIndex:2];
+  }
+  
+  // the next integer token should be the major version, so read everything up to the first decimal point, if any
+  NSUInteger versionEndLoc = [vstring rangeOfString:@"."].location;
+  if (versionEndLoc != NSNotFound) {
+    vstring = [vstring substringToIndex:versionEndLoc];
+  }
+  
+  return [vstring intValue];
 }
+
 
 NSString * convertRelativeFilePath(NSString * path) {
     return [path stringByStandardizingPath];

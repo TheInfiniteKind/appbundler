@@ -42,6 +42,7 @@ questions.
         <javac destDir="${ant.project.name}/${folder.classes}"
             includejavaruntime="true"
             includeantruntime="true"
+            target="1.8"
             deprecation="true"
             debug="true"
             encoding="UTF-8"
@@ -74,7 +75,7 @@ questions.
         </exec>
 
         <exec executable="${cc}" failonerror="true">
-            <arg line="${arch64} ${arch32}"/>
+            <arg line="${arch64}"/>
             <arg value="-I"/>
             <arg value="${javahome}/include"/>
             <arg value="-I"/>
