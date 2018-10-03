@@ -870,8 +870,18 @@ NSString * findJDKDylib (
             if (isDebugging) {
                 DLog (@"JDK version qualifies");
             }
-            return [[outRead stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
-                                    stringByAppendingPathComponent:@"jre"];
+
+            NSString *outread2 = [outRead stringByTrimmingCharactersInSet:[NSCharacterSet
+                                                            whitespaceAndNewlineCharacterSet]];
+
+        //  Return location where LIBJLI_DY_LIB is located. Note that the path was
+        //  shortemed between JDK 8 and JDK 9.
+            if (version > 8) {
+                return outread2;
+            }
+            else {
+                return [outread2 stringByAppendingPathComponent:@"jre"];
+            }
         }
     }
     @catch (NSException *exception)
