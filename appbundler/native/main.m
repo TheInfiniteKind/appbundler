@@ -497,7 +497,15 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     NSString *sandboxEnabledVar = [NSString stringWithFormat:@"-DSandboxEnabled=%@", sandboxEnabled];
     [systemArguments addObject:sandboxEnabledVar];
 	
-	
+
+    // Mojave Dark Mode enabled?
+    NSString *osxMode = [[NSUserDefaults standardUserDefaults] stringForKey:@"AppleInterfaceStyle"];
+    BOOL isDarkMode = (osxMode != nil && [osxMode isEqualToString:@"Dark"]);
+
+    NSString *darkModeEnabledVar = [NSString stringWithFormat:@"-DDarkMode=%s",
+                                                    (isDarkMode ? "true" : "false")];
+    [systemArguments addObject:darkModeEnabledVar];
+
 	// Check for modifier keys on app launch
 	
 	// Since [NSEvent modifierFlags] is only available since OS X 10.6., only add properties if supported.
