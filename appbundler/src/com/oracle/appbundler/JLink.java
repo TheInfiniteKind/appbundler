@@ -37,6 +37,7 @@ import org.apache.tools.ant.taskdefs.ExecTask;
 public class JLink {
     private String runtime = null;
     private ArrayList<String> jmods = new ArrayList<>();
+    private ArrayList<String> arguments = new ArrayList<>();
     private ExecTask exec = new ExecTask();
 
     public JLink() {
@@ -79,6 +80,16 @@ public class JLink {
         jmods.add(name);
     }
 
+    public void addConfiguredArgument(Argument argument) throws BuildException {
+        String value = argument.getValue();
+
+        if (value == null) {
+            throw new BuildException("Value is required.");
+        }
+
+        arguments.add(value);
+    }
+
     public void copyTo(File targetDir) throws IOException {
         File runtimeHomeDirectory = getDir();
         File runtimeContentsDirectory = runtimeHomeDirectory.getParentFile();
@@ -107,6 +118,9 @@ public class JLink {
         exec.setExecutable(runtimeHomeDirectory.getAbsolutePath() + "/bin/jlink");
         exec.setFailIfExecutionFails(true);
         exec.setFailonerror(true);
+        for(String s : this.arguments) {
+            exec.createArg().setValue(s);
+        }
 
         exec.createArg().setValue("--no-man-pages");
         exec.createArg().setValue("--no-header-files");
