@@ -183,4 +183,48 @@ Example 2, use installed Java but require Java 8 (or later) JRE and not a JDK:
       </bundleapp>
     </target>
 
+Example 3, bundle a stripped down JRE that only needs java.base and java.desktop for a non modularized app:
 
+    <target name="bundle">
+      <!-- Obtain path to the selected JRE -->
+      <exec executable="/usr/libexec/java_home"
+             failonerror="true"
+             outputproperty="runtime">
+        <arg value="-v"/>
+        <arg value="11"/>
+      </exec>
+
+      <taskdef name="bundleapp" 
+        classpath="appbundler-1.0ea.jar"
+        classname="com.oracle.appbundler.AppBundlerTask"/>
+
+        <bundleapp 
+          classpathref="runclasspathref"
+          outputdirectory="${dist}"
+          name="${bundle.name}"
+          displayname="${bundle.displayname}"
+          executableName="MyApp"
+          identifier="com.company.product"
+          shortversion="${version.public}"
+          version="${version.internal}"
+          icon="${icons.path}/${bundle.icns}"
+          mainclassname="Main"
+          copyright="2019 Your Company"
+          applicationCategory="public.app-category.finance">
+
+          <jlink runtime="${runtime}">
+            <jmod name="java.base"/>
+            <jmod name="java.desktop"/>
+
+            <!-- Zip the generated modules file (Optional) -->
+            <argument value="--compress=2"/>
+
+            <!-- Preserve all release properties, but update the modules
+              -  list. (Optional)
+              -
+              -  See https://bugs.openjdk.java.net/browse/JDK-8179563
+             -->
+            <argument value="--release-info=${runtime}/release"/>
+          </jlink>
+      </bundleapp>
+    </target>
