@@ -78,15 +78,11 @@ typedef int (JNICALL *JLI_Launch_t)(int argc, char ** argv,
                                     jboolean javaw,
                                     jint ergo);
 
-static char** progargv = NULL;
-static int progargc = 0;
-static int launchCount = 0;
-
 static bool isVerbose = false;
 static bool isDebugging = false;
 
 const char * tmpFile();
-int launch(char *, int, char **);
+int launch(char *, int, char **, int launchCount);
 
 NSString * findJavaDylib (NSString *, bool, bool, bool, bool);
 NSString * findJREDylib (int, bool, bool);
@@ -103,12 +99,16 @@ int main(int argc, char *argv[]) {
 
     int result;
     @try {
+        char** progargv = NULL;
+        int progargc = 0;
+        int launchCount = 0;
+
         if ((argc > 1) && (launchCount == 0)) {
             progargc = argc - 1;
             progargv = &argv[1];
         }
 
-        launch(argv[0], progargc, progargv);
+        launch(argv[0], progargc, progargv, launchCount);
         result = 0;
     } @catch (NSException *exception) {
         NSAlert *alert = [[NSAlert alloc] init];
@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
     return result;
 }
 
-int launch(char *commandName, int progargc, char *progargv[]) {
+int launch(char *commandName, int progargc, char *progargv[], int launchCount) {
 
     // check args for `--verbose`
     for (int i = 0; i < progargc; i++) {
