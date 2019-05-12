@@ -58,11 +58,13 @@
 #define LIBJLI_DY_LIB "libjli.dylib"
 #define DEPLOY_LIB    "lib/deploy.jar"
 
+
 //*
     #define DLog(...) NSLog(@"%s %@", __PRETTY_FUNCTION__, [NSString stringWithFormat:__VA_ARGS__])
 /*/
     #define DLog(...) do { } while (0)
 //*/
+
 
 typedef int (JNICALL *JLI_Launch_t)(int argc, char ** argv,
                                     int jargc, const char** jargv,
@@ -80,6 +82,9 @@ static char** progargv = NULL;
 static int progargc = 0;
 static int launchCount = 0;
 
+static bool isVerbose = false;
+static bool isDebugging = false;
+
 const char * tmpFile();
 int launch(char *, int, char **);
 
@@ -90,16 +95,18 @@ int extractMajorVersion (NSString *);
 NSString * convertRelativeFilePath(NSString *);
 NSString * addDirectoryToSystemArguments(NSUInteger, NSSearchPathDomainMask, NSString *, NSMutableArray *);
 void addModifierFlagToSystemArguments(NSEventModifierFlags, NSString *, NSEventModifierFlags, NSMutableArray *);
+static void Log(NSString *format, ...);
+static void NSPrint(NSString *format, va_list args);
 
 int main(int argc, char *argv[]) {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
     int result;
     @try {
-    	if ((argc > 1) && (launchCount == 0)) {
-    		progargc = argc - 1;
-    		progargv = &argv[1];
-    	}
+        if ((argc > 1) && (launchCount == 0)) {
+            progargc = argc - 1;
+            progargv = &argv[1];
+        }
 
         launch(argv[0], progargc, progargv);
         result = 0;
@@ -119,6 +126,13 @@ int main(int argc, char *argv[]) {
 
 int launch(char *commandName, int progargc, char *progargv[]) {
 
+    // check args for `--verbose`
+    for (int i = 0; i < progargc; i++) {
+        if (strcmp(progargv[i], "--verbose")) {
+            isVerbose = true;
+        }
+    }
+
     // Preparation for jnlp launcher arguments
     const char *const_jargs = NULL;
     const char *const_appclasspath = NULL;
@@ -128,14 +142,12 @@ int launch(char *commandName, int progargc, char *progargv[]) {
 
     // Get the main bundle's info dictionary
     NSDictionary *infoDictionary = [mainBundle infoDictionary];
-    
+
     // Test for debugging (but only on the second runthrough)
     bool isDebugging = [[infoDictionary objectForKey:@JVM_DEBUG_KEY] boolValue];
-    
-    if (isDebugging) {
-        DLog(@"\n\n\n\nLoading Application '%@'", [infoDictionary objectForKey:@"CFBundleName"]);
-    }
-    
+
+    Log(@"\n\n\n\nLoading Application '%@'", [infoDictionary objectForKey:@"CFBundleName"]);
+
     // Set the working directory based on config, defaulting to the user's home directory
     NSString *workingDir = [infoDictionary objectForKey:@WORKING_DIR];
     if (workingDir != nil) {
@@ -144,22 +156,18 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         workingDir = [[NSFileManager defaultManager] currentDirectoryPath];
         workingDir = NSHomeDirectory(); // REVIEW: Check which if these ones is realy the users home directory ...
     }
-    if (isDebugging) {
-    	DLog(@"Working Directory: '%@'", convertRelativeFilePath(workingDir));
-    }
-    
+    Log(@"Working Directory: '%@'", convertRelativeFilePath(workingDir));
+
     chdir([workingDir UTF8String]);
-           
+
     // execute privileged
     NSString *privileged = [infoDictionary objectForKey:@JVM_RUN_PRIVILEGED];
     if ( privileged != nil && getuid() != 0 ) {
         NSDictionary *error = [NSDictionary new];
-        
+
         NSString *script =  [NSString stringWithFormat:@"do shell script \"\\\"%@\\\" > /dev/null 2>&1 &\" with administrator privileges", [NSString stringWithCString:commandName encoding:NSASCIIStringEncoding]];
-        
-        if (isDebugging) {
-            DLog(@"script: %@", script);
-        }
+
+        Log(@"script: %@", script);
 
         NSAppleScript *appleScript = [[NSAppleScript new] initWithSource:script];
         if ([appleScript executeAndReturnError:&error]) {
@@ -167,7 +175,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
             return 0;
         }
     }
-    
+
     // Locate the JLI_Launch() function
     NSString *runtime = [infoDictionary objectForKey:@JVM_RUNTIME_KEY];
     NSString *runtimePath = [[mainBundle builtInPlugInsPath] stringByAppendingPathComponent:runtime];
@@ -176,9 +184,9 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     bool exactVersionMatch = false;
     bool jrePreferred = [[infoDictionary objectForKey:@JRE_PREFERRED_KEY] boolValue];
     bool jdkPreferred = [[infoDictionary objectForKey:@JDK_PREFERRED_KEY] boolValue];
-    
+
     if (jrePreferred && jdkPreferred) {
-        DLog(@"Specifying both JRE- and JDK-preferred means neither is preferred");
+        Log(@"Specifying both JRE- and JDK-preferred means neither is preferred");
         jrePreferred = false;
         jdkPreferred = false;
     }
@@ -198,12 +206,12 @@ int launch(char *commandName, int progargc, char *progargv[]) {
             required = extractMajorVersion (jvmRequired);
             if (required > 8) { required = 8; }
         }
-        
+
         exactVersionMatch = true;
         jvmRequired = [NSString stringWithFormat:@"1.%i", required];
-        DLog(@"Will Require a JVM version '%i' due to JNLP restrictions", required);
+        Log(@"Will Require a JVM version '%i' due to JNLP restrictions", required);
     }
-    
+
     NSString *javaDylib = NULL;
 
     // If a runtime is set, we really want it. If it is not there, we will fail later on.
@@ -219,18 +227,14 @@ int launch(char *commandName, int progargc, char *progargv[]) {
             }
         }
 
-        if (isDebugging) {
-            DLog(@"Java Runtime (%@) Relative Path: '%@' (dylib: %@)", runtime, runtimePath, javaDylib);
-        }
+        Log(@"Java Runtime (%@) Relative Path: '%@' (dylib: %@)", runtime, runtimePath, javaDylib);
     }
     else {
         // Search for the runtimePath, then make it a libjli.dylib path.
         runtimePath = findJavaDylib (jvmRequired, jrePreferred, jdkPreferred, isDebugging, exactVersionMatch);
         javaDylib = [[runtimePath stringByAppendingPathComponent:@"lib/jli"] stringByAppendingPathComponent:@LIBJLI_DY_LIB];
 
-        if (isDebugging) {
-            DLog(@"Java Runtime Dylib Path: '%@'", convertRelativeFilePath(javaDylib));
-        }
+        Log(@"Java Runtime Dylib Path: '%@'", convertRelativeFilePath(javaDylib));
     }
 
     const char *libjliPath = NULL;
@@ -238,8 +242,8 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     {
         libjliPath = [javaDylib fileSystemRepresentation];
     }
-    
-    DLog(@"Launchpath: %s", libjliPath);
+
+    Log(@"Launchpath: %s", libjliPath);
 
     void *libJLI = dlopen(libjliPath, RTLD_LAZY);
 
@@ -253,7 +257,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
 
         if (runtime == nil && jvmRequired != nil) {
             int required = extractMajorVersion (jvmRequired);
-            
+
             if (required < 7) { required = 7; }
 
             if (jdkPreferred) {
@@ -268,21 +272,21 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         else {
             msg = NSLocalizedString(@"JRELoadError", @UNSPECIFIED_ERROR);
         }
-        
-        DLog(@"Error launching JVM Runtime (%@) Relative Path: '%@' (dylib: %@)\n  error: %@",
-              runtime, runtimePath, javaDylib, msg);
+
+        Log(@"Error launching JVM Runtime (%@) Relative Path: '%@' (dylib: %@)\n  error: %@",
+             runtime, runtimePath, javaDylib, msg);
 
         [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
-                reason:msg userInfo:nil] raise];
+                                 reason:msg userInfo:nil] raise];
     }
 
     // Set the class path
     NSFileManager *defaultFileManager = [NSFileManager defaultManager];
     NSString *mainBundlePath = [mainBundle bundlePath];
-    
+
     // make sure the bundle path does not contain a colon, as that messes up the java.class.path,
     // because colons are used a path separators and cannot be escaped.
-    
+
     // funny enough, Finder does not let you create folder with colons in their names,
     // but when you create a folder with a slash, e.g. "audio/video", it is accepted
     // and turned into... you guessed it, a colon:
@@ -292,9 +296,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
                                  reason:NSLocalizedString(@"BundlePathContainsColon", @UNSPECIFIED_ERROR)
                                userInfo:nil] raise];
     }
-    if (isDebugging) {
-        NSLog(@"Main Bundle Path: '%@'", mainBundlePath);
-    }
+    Log(@"Main Bundle Path: '%@'", mainBundlePath);
 
     // Set the class path
     NSString *javaPath = [mainBundlePath stringByAppendingString:@"/Contents/Java"];
@@ -304,13 +306,13 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     // Set the library path
     NSString *libraryPath = [NSString stringWithFormat:@"-Djava.library.path=%@/Contents/MacOS", mainBundlePath];
     [systemArguments addObject:libraryPath];
-    
+
     // Get the VM options
     NSMutableArray *options = [[infoDictionary objectForKey:@JVM_OPTIONS_KEY] mutableCopy];
     if (options == nil) {
         options = [NSMutableArray array];
     }
-    
+
     // Get the VM default options
     NSArray *defaultOptions = [NSArray array];
     NSDictionary *defaultOptionsDict = [infoDictionary objectForKey:@JVM_DEFAULT_OPTIONS_KEY];
@@ -325,7 +327,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         NSString *bundleDictionaryKey = [mainBundle bundleIdentifier];
         bundleDictionaryKey = [bundleDictionaryKey stringByReplacingOccurrencesOfString:@"." withString:@"/"];
         bundleDictionaryKey = [NSString stringWithFormat: @"/%@/", bundleDictionaryKey];
-        
+
         NSDictionary *bundleDictionary = [userDefaults dictionaryForKey: bundleDictionaryKey];
         if (bundleDictionary != nil) {
             NSDictionary *jvmOptionsDictionary = [bundleDictionary objectForKey: @"JVMOptions/"];
@@ -336,7 +338,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         }
         defaultOptions = [defaults allValues];
     }
-    
+
     // Get the application arguments
     NSMutableArray *arguments = [[infoDictionary objectForKey:@JVM_ARGUMENTS_KEY] mutableCopy];
     if (arguments == nil) {
@@ -351,43 +353,43 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     NSString *mainClassName = [infoDictionary objectForKey:@JVM_MAIN_CLASS_NAME_KEY];
 
     if ( jnlplauncher != nil ) {
-        
+
         const_appclasspath = [[runtimePath stringByAppendingPathComponent:@DEPLOY_LIB] fileSystemRepresentation];
-        
+
         // JNLP Launcher found, need to modify quite a bit now
         [options addObject:@"-classpath"];
         [options addObject:[NSString stringWithFormat:@"%s", const_appclasspath]];
-        
+
         // unset the original classpath
         classPath = nil;
-        
+
         // Main Class is javaws
         mainClassName=@"com.sun.javaws.Main";
-        
+
         // Optional stuff that javaws would do as well
         [options addObject:@"-Dsun.awt.warmup=true"];
         [options addObject:@"-Xverify:remote"];
         [options addObject:@"-Djnlpx.remove=true"];
         [options addObject:@"-DtrustProxy=true"];
-        
+
         [options addObject:[NSString stringWithFormat:@"-Djava.security.policy=file:%@/lib/security/javaws.policy", runtimePath]];
         [options addObject:[NSString stringWithFormat:@"-Xbootclasspath/a:%@/lib/javaws.jar:%@/lib/deploy.jar:%@/lib/plugin.jar", runtimePath, runtimePath, runtimePath]];
-        
+
         // Argument that javaws does also
         // [arguments addObject:@"-noWebStart"];
-        
+
         // Copy the jnlp to a temporary location
         NSError *copyerror = nil;
         NSString *tempFileName = [NSString stringWithCString:tmpFile() encoding:NSASCIIStringEncoding];
         // File now exists.
         [defaultFileManager removeItemAtPath:tempFileName error:NULL];
-        
+
         // Check if this is absolute or relative (else)
         NSString *jnlpPath = [mainBundlePath stringByAppendingPathComponent:jnlplauncher];
         if ( ![defaultFileManager fileExistsAtPath:jnlpPath] ) {
             jnlpPath = [javaPath stringByAppendingPathComponent:jnlplauncher];
         }
-        
+
         [defaultFileManager copyItemAtURL:[NSURL fileURLWithPath:jnlpPath] toURL:[NSURL fileURLWithPath:tempFileName] error:&copyerror];
         if ( copyerror != nil ) {
             NSLog(@"Error: %@", copyerror);
@@ -395,32 +397,31 @@ int launch(char *commandName, int progargc, char *progargv[]) {
                                      reason:@"File copy error"
                                    userInfo:copyerror.userInfo] raise];
         }
-        
+
         // Add the jnlp as argument so that javaws.Main can read and delete it
         [arguments addObject:tempFileName];
-        
+
     } else
-    // Either mainClassName or jarLauncher has to be set since this is not a jnlpLauncher
-    if ( mainClassName == nil && jarlauncher == nil ) {
-        [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
-            reason:NSLocalizedString(@"MainClassNameRequired", @UNSPECIFIED_ERROR)
-            userInfo:nil] raise];
-    }
-    
-    if (isDebugging) {
-        DLog(@"Main Class Name: '%@'", mainClassName);
-    }
+        // Either mainClassName or jarLauncher has to be set since this is not a jnlpLauncher
+        if ( mainClassName == nil && jarlauncher == nil ) {
+            [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
+                                     reason:NSLocalizedString(@"MainClassNameRequired", @UNSPECIFIED_ERROR)
+                                   userInfo:nil] raise];
+        }
+
+    Log(@"Main Class Name: '%@'", mainClassName);
+
 
     // If a jar file is defined as launcher, disacard the javaPath
     if ( jarlauncher != nil ) {
         [classPath appendFormat:@":%@/%@", javaPath, jarlauncher];
     } else {
-        
+
         NSArray *cp = [infoDictionary objectForKey:@JVM_CLASSPATH_KEY];
         if (cp == nil) {
-            
+
             // Implicit classpath, so use the contents of the "Java" folder to build an explicit classpath
-            
+
             [classPath appendFormat:@"%@/Classes", javaPath];
             NSFileManager *defaultFileManager = [NSFileManager defaultManager];
             NSArray *javaDirectoryContents = [defaultFileManager contentsOfDirectoryAtPath:javaPath error:nil];
@@ -429,17 +430,17 @@ int launch(char *commandName, int progargc, char *progargv[]) {
                                          reason:NSLocalizedString(@"JavaDirectoryNotFound", @UNSPECIFIED_ERROR)
                                        userInfo:nil] raise];
             }
-            
+
             for (NSString *file in javaDirectoryContents) {
                 if ([file hasSuffix:@".jar"]) {
                     [classPath appendFormat:@":%@/%@", javaPath, file];
                 }
             }
-            
+
         } else {
-            
+
             // Explicit ClassPath
-            
+
             int k = 0;
             for (NSString *file in cp) {
                 if (k++ > 0) [classPath appendString:@":"]; // add separator if needed
@@ -466,13 +467,13 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     addDirectoryToSystemArguments(NSMusicDirectory, NSUserDomainMask, @"MusicDirectory", systemArguments);
     addDirectoryToSystemArguments(NSPicturesDirectory, NSUserDomainMask, @"PicturesDirectory", systemArguments);
     addDirectoryToSystemArguments(NSSharedPublicDirectory, NSUserDomainMask, @"SharedPublicDirectory", systemArguments);
-    
+
     addDirectoryToSystemArguments(NSLibraryDirectory, NSLocalDomainMask, @"SystemLibraryDirectory", systemArguments);
     addDirectoryToSystemArguments(NSApplicationSupportDirectory, NSLocalDomainMask, @"SystemApplicationSupportDirectory", systemArguments);
     addDirectoryToSystemArguments(NSCachesDirectory, NSLocalDomainMask, @"SystemCachesDirectory", systemArguments);
     addDirectoryToSystemArguments(NSApplicationDirectory, NSLocalDomainMask, @"SystemApplicationDirectory", systemArguments);
     addDirectoryToSystemArguments(NSUserDirectory, NSLocalDomainMask, @"SystemUserDirectory", systemArguments);
-    
+
     // get the user's home directory, independent of the sandbox container
     int bufsize;
     if ((bufsize = sysconf(_SC_GETPW_R_SIZE_MAX)) != -1) {
@@ -482,7 +483,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
             [systemArguments addObject:[NSString stringWithFormat:@"-DUserHome=%s", pwd.pw_dir]];
         }
     }
-    
+
     //Sandbox
     NSString *containersDirectory = [libraryDirectory stringByAppendingPathComponent:@"Containers"];
     NSString *sandboxEnabled = @"false";
@@ -494,35 +495,35 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     }
     NSString *sandboxEnabledVar = [NSString stringWithFormat:@"-DSandboxEnabled=%@", sandboxEnabled];
     [systemArguments addObject:sandboxEnabledVar];
-	
+
 
     // Mojave Dark Mode enabled?
     NSString *osxMode = [[NSUserDefaults standardUserDefaults] stringForKey:@"AppleInterfaceStyle"];
     BOOL isDarkMode = (osxMode != nil && [osxMode isEqualToString:@"Dark"]);
 
     NSString *darkModeEnabledVar = [NSString stringWithFormat:@"-DDarkMode=%s",
-                                                    (isDarkMode ? "true" : "false")];
+                                    (isDarkMode ? "true" : "false")];
     [systemArguments addObject:darkModeEnabledVar];
 
-	// Check for modifier keys on app launch
-	
-	// Since [NSEvent modifierFlags] is only available since OS X 10.6., only add properties if supported.
-	if ([NSEvent respondsToSelector:@selector(modifierFlags)]) {
-		NSEventModifierFlags launchModifierFlags = [NSEvent modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
-		
-		[systemArguments addObject:[NSString stringWithFormat:@"-DLaunchModifierFlags=%lu", (unsigned long)launchModifierFlags]];
-		
-		addModifierFlagToSystemArguments(NSEventModifierFlagCapsLock, @"LaunchModifierFlagCapsLock", launchModifierFlags, systemArguments);
-		addModifierFlagToSystemArguments(NSEventModifierFlagShift, @"LaunchModifierFlagShift", launchModifierFlags, systemArguments);
-		addModifierFlagToSystemArguments(NSEventModifierFlagControl, @"LaunchModifierFlagControl", launchModifierFlags, systemArguments);
-		addModifierFlagToSystemArguments(NSEventModifierFlagOption, @"LaunchModifierFlagOption", launchModifierFlags, systemArguments);
-		addModifierFlagToSystemArguments(NSEventModifierFlagCommand, @"LaunchModifierFlagCommand", launchModifierFlags, systemArguments);
-		addModifierFlagToSystemArguments(NSEventModifierFlagNumericPad, @"LaunchModifierFlagNumericPad", launchModifierFlags, systemArguments);
-		addModifierFlagToSystemArguments(NSEventModifierFlagHelp, @"LaunchModifierFlagHelp", launchModifierFlags, systemArguments);
-		addModifierFlagToSystemArguments(NSEventModifierFlagFunction, @"LaunchModifierFlagFunction", launchModifierFlags, systemArguments);
-	}
-	
-	
+    // Check for modifier keys on app launch
+
+    // Since [NSEvent modifierFlags] is only available since OS X 10.6., only add properties if supported.
+    if ([NSEvent respondsToSelector:@selector(modifierFlags)]) {
+        NSEventModifierFlags launchModifierFlags = [NSEvent modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
+
+        [systemArguments addObject:[NSString stringWithFormat:@"-DLaunchModifierFlags=%lu", (unsigned long)launchModifierFlags]];
+
+        addModifierFlagToSystemArguments(NSEventModifierFlagCapsLock, @"LaunchModifierFlagCapsLock", launchModifierFlags, systemArguments);
+        addModifierFlagToSystemArguments(NSEventModifierFlagShift, @"LaunchModifierFlagShift", launchModifierFlags, systemArguments);
+        addModifierFlagToSystemArguments(NSEventModifierFlagControl, @"LaunchModifierFlagControl", launchModifierFlags, systemArguments);
+        addModifierFlagToSystemArguments(NSEventModifierFlagOption, @"LaunchModifierFlagOption", launchModifierFlags, systemArguments);
+        addModifierFlagToSystemArguments(NSEventModifierFlagCommand, @"LaunchModifierFlagCommand", launchModifierFlags, systemArguments);
+        addModifierFlagToSystemArguments(NSEventModifierFlagNumericPad, @"LaunchModifierFlagNumericPad", launchModifierFlags, systemArguments);
+        addModifierFlagToSystemArguments(NSEventModifierFlagHelp, @"LaunchModifierFlagHelp", launchModifierFlags, systemArguments);
+        addModifierFlagToSystemArguments(NSEventModifierFlagFunction, @"LaunchModifierFlagFunction", launchModifierFlags, systemArguments);
+    }
+
+
 
     // Remove -psn argument
     int newProgargc = progargc;
@@ -530,7 +531,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     for (int i = 0; i < progargc; i++) {
         newProgargv[i] = progargv[i];
     }
-    
+
     bool ignorePSN = [[infoDictionary objectForKey:@IGNORE_PSN_KEY] boolValue];
     if (ignorePSN) {
         NSString *psnRegexp = @"^-psn_\\d_\\d+$";
@@ -567,20 +568,20 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     int i = 0;
     argv[i++] = commandName;
     for (NSString *systemArgument in systemArguments) {
-    	argv[i++] = strdup([systemArgument UTF8String]);
+        argv[i++] = strdup([systemArgument UTF8String]);
     }
 
     for (NSString *option in options) {
         option = [option stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
         option = [option stringByReplacingOccurrencesOfString:@JVM_RUNTIME withString:runtimePath];
         argv[i++] = strdup([option UTF8String]);
-        if (isDebugging) { DLog(@"Option: %@",option); }
+        Log(@"Option: %@",option);
     }
 
     for (NSString *defaultOption in defaultOptions) {
         defaultOption = [defaultOption stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
         argv[i++] = strdup([defaultOption UTF8String]);
-        if (isDebugging) { DLog(@"DefaultOption: %@",defaultOption); }
+        Log(@"DefaultOption: %@",defaultOption);
     }
 
     argv[i++] = strdup([mainClassName UTF8String]);
@@ -590,21 +591,19 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         argv[i++] = strdup([argument UTF8String]);
     }
 
-	int ctr = 0;
-	for (ctr = 0; ctr < newProgargc; ctr++) {
-		argv[i++] = newProgargv[ctr];
-	}
-    
-    // Print the full command line for debugging purposes...
-    if (isDebugging) {
-        DLog(@"Command line passed to application:");
-        int j=0;
-        for(j=0; j<i; j++) {
-            DLog(@"Arg %d: '%s'", j, argv[j]);
-        }
+    int ctr = 0;
+    for (ctr = 0; ctr < newProgargc; ctr++) {
+        argv[i++] = newProgargv[ctr];
     }
 
-	launchCount++;
+    // Print the full command line for debugging purposes...
+    Log(@"Command line passed to application:");
+    int j=0;
+    for(j=0; j<i; j++) {
+        Log(@"Arg %d: '%s'", j, argv[j]);
+    }
+
+    launchCount++;
 
     // Invoke JLI_Launch()
     return jli_LaunchFxnPtr(argc, argv,
@@ -627,27 +626,27 @@ int launch(char *commandName, int progargc, char *progargv[]) {
 const char * tmpFile() {
     NSString *tempFileTemplate = [NSTemporaryDirectory()
                                   stringByAppendingPathComponent:@"jnlpFile.XXXXXX.jnlp"];
-    
+
     const char *tempFileTemplateCString = [tempFileTemplate fileSystemRepresentation];
-    
+
     char *tempFileNameCString = (char *)malloc(strlen(tempFileTemplateCString) + 1);
     strcpy(tempFileNameCString, tempFileTemplateCString);
     int fileDescriptor = mkstemps(tempFileNameCString, 5);
-    
+
     // no need to keep it open
     close(fileDescriptor);
-    
+
     if (fileDescriptor == -1) {
-        DLog(@"Error while creating tmp file");
+        Log(@"Error while creating tmp file");
         return nil;
     }
-    
+
     NSString *tempFileName = [[NSFileManager defaultManager]
                               stringWithFileSystemRepresentation:tempFileNameCString
                               length:strlen(tempFileNameCString)];
-    
+
     free(tempFileNameCString);
-    
+
     return [tempFileName fileSystemRepresentation];
 }
 
@@ -658,57 +657,51 @@ const char * tmpFile() {
  *  specified or the version is pre-1.7, then a Java 1.7 is sought.
  */
 NSString * findJavaDylib (
-        NSString *jvmRequired,
-        bool jrePreferred,
-        bool jdkPreferred,
-        bool isDebugging,
-        bool exactMatch)
+                          NSString *jvmRequired,
+                          bool jrePreferred,
+                          bool jdkPreferred,
+                          bool isDebugging,
+                          bool exactMatch)
 {
-    DLog (@"Searching for a JRE.");
+    Log(@"Searching for a JRE.");
     int required = extractMajorVersion(jvmRequired);
 
     if (required < 7)
     {
-        if (isDebugging) { DLog (@"Required JVM must be at least ver. 7."); }
+        Log(@"Required JVM must be at least ver. 7.");
         required = 7;
     }
 
-    if (isDebugging) {
-        DLog (@"Searching for a Java %d", required);
-    }
+    Log(@"Searching for a Java %d", required);
 
     //  First, if a JRE is acceptible, try to find one with required Java version.
     //  If found, return address for dylib that should be in the JRE package.
     if (jdkPreferred) {
-        if (isDebugging) {
-            DLog (@"A JDK is preferred; will not search for a JRE.");
-        }
+        Log(@"A JDK is preferred; will not search for a JRE.");
     }
     else {
         NSString * dylib = findJREDylib (required, isDebugging, exactMatch);
 
         if (dylib != nil) { return dylib; }
 
-        if (isDebugging) { DLog (@"No matching JRE found."); }
+        Log(@"No matching JRE found.");
     }
 
     // If JRE not found or if JDK preferred, look for an acceptable JDK
     // (probably in /Library/Java/JavaVirtualMachines if so). If found,
     // return return address of dylib in the JRE within the JDK.
     if (jrePreferred) {
-        if (isDebugging) {
-            DLog (@"A JRE is preferred; will not search for a JDK.");
-        }
+        Log(@"A JRE is preferred; will not search for a JDK.");
     }
     else {
         NSString * dylib = findJDKDylib (required, isDebugging, exactMatch);
 
         if (dylib != nil) { return dylib; }
 
-        if (isDebugging) { DLog (@"No matching JDK found."); }
+        Log(@"No matching JDK found.");
     }
 
-    DLog (@"No matching JRE or JDK found.");
+    Log(@"No matching JRE or JDK found.");
 
     return nil;
 }
@@ -717,9 +710,9 @@ NSString * findJavaDylib (
  *  Searches for a JRE dylib of the specified version or later.
  */
 NSString * findJREDylib (
-        int jvmRequired,
-        bool isDebugging,
-        bool exactMatch)
+                         int jvmRequired,
+                         bool isDebugging,
+                         bool exactMatch)
 {
     // Try the "java -version" shell command and see if we get a response and
     // if so whether the version  is acceptable.
@@ -730,35 +723,35 @@ NSString * findJREDylib (
     {
         NSTask *task = [[NSTask alloc] init];
         [task setLaunchPath:[@JAVA_RUNTIME stringByAppendingPathComponent:@"bin/java"]];
-        
+
         NSArray *args = [NSArray arrayWithObjects: @"-version", nil];
         [task setArguments:args];
-        
+
         NSPipe *stdout = [NSPipe pipe];
         [task setStandardOutput:stdout];
-        
+
         NSPipe *stderr = [NSPipe pipe];
         [task setStandardError:stderr];
-        
+
         [task setStandardInput:[NSPipe pipe]];
-        
+
         NSFileHandle *outHandle = [stdout fileHandleForReading];
         NSFileHandle *errHandle = [stderr fileHandleForReading];
-        
+
         [task launch];
         [task waitUntilExit];
         [task release];
-        
+
         NSData *data1 = [outHandle readDataToEndOfFile];
         NSData *data2 = [errHandle readDataToEndOfFile];
-        
+
         NSString *outRead = [[NSString alloc] initWithData:data1
                                                   encoding:NSUTF8StringEncoding];
         NSString *errRead = [[NSString alloc] initWithData:data2
                                                   encoding:NSUTF8StringEncoding];
 
-    //  Found something in errRead. Parse it for a Java version string and
-    //  try to extract a major version number.
+        //  Found something in errRead. Parse it for a Java version string and
+        //  try to extract a major version number.
         if (errRead != nil) {
             int version = 0;
 
@@ -773,23 +766,19 @@ NSString * findJREDylib (
 
                 version = extractMajorVersion(vstring);
 
-                if (isDebugging) {
-                    DLog (@"Found a Java %@ JRE", vstring);
-                    DLog (@"Looks like major version %d", extractMajorVersion(vstring));
-                }
+                Log(@"Found a Java %@ JRE", vstring);
+                Log(@"Looks like major version %d", extractMajorVersion(vstring));
             }
 
             if ( (version >= jvmRequired && !exactMatch) || (version == jvmRequired && exactMatch) ) {
-                if (isDebugging) {
-                    DLog (@"JRE version qualifies");
-                }
+                Log(@"JRE version qualifies");
                 return @JAVA_RUNTIME;
             }
         }
     }
     @catch (NSException *exception)
     {
-        DLog (@"JRE search exception: '%@'", [exception reason]);
+        Log(@"JRE search exception: '%@'", [exception reason]);
     }
 
     return nil;
@@ -802,9 +791,9 @@ NSString * findJREDylib (
  *  Searches for a JDK dylib of the specified version or later.
  */
 NSString * findJDKDylib (
-        int jvmRequired,
-        bool isDebugging,
-        bool exactMatch)
+                         int jvmRequired,
+                         bool isDebugging,
+                         bool exactMatch)
 {
     @try
     {
@@ -833,16 +822,16 @@ NSString * findJDKDylib (
         NSData *data2 = [errHandle readDataToEndOfFile];
 
         NSString *outRead = [[NSString alloc] initWithData:data1
-                                                    encoding:NSUTF8StringEncoding];
+                                                  encoding:NSUTF8StringEncoding];
         NSString *errRead = [[NSString alloc] initWithData:data2
-                                                    encoding:NSUTF8StringEncoding];
+                                                  encoding:NSUTF8StringEncoding];
 
-    //  If matching JDK not found, outRead will include something like
-    //  "Unable to find any JVMs matching version "1.X"."
+        //  If matching JDK not found, outRead will include something like
+        //  "Unable to find any JVMs matching version "1.X"."
         if ( errRead != nil
-                && [errRead rangeOfString:@"Unable"].location != NSNotFound )
+            && [errRead rangeOfString:@"Unable"].location != NSNotFound )
         {
-            if (isDebugging) {  DLog (@"No matching JDK found."); }
+            Log(@"No matching JDK found.");
             return nil;
         }
 
@@ -866,22 +855,18 @@ NSString * findJDKDylib (
 
             version = extractMajorVersion(vstring);
 
-            if (isDebugging) {
-                DLog (@"Found a Java %@ JDK", vstring);
-                DLog (@"Looks like major version %d", extractMajorVersion(vstring));
-            }
+            Log(@"Found a Java %@ JDK", vstring);
+            Log(@"Looks like major version %d", extractMajorVersion(vstring));
         }
 
         if ( (version >= jvmRequired && !exactMatch) || (version == jvmRequired && exactMatch) ) {
-            if (isDebugging) {
-                DLog (@"JDK version qualifies");
-            }
+            Log(@"JDK version qualifies");
 
             NSString *outread2 = [outRead stringByTrimmingCharactersInSet:[NSCharacterSet
-                                                            whitespaceAndNewlineCharacterSet]];
+                                                                           whitespaceAndNewlineCharacterSet]];
 
-        //  Return location where LIBJLI_DY_LIB is located. Note that the path was
-        //  shortemed between JDK 8 and JDK 9.
+            //  Return location where LIBJLI_DY_LIB is located. Note that the path was
+            //  shortemed between JDK 8 and JDK 9.
             if (version > 8) {
                 return outread2;
             }
@@ -892,7 +877,7 @@ NSString * findJDKDylib (
     }
     @catch (NSException *exception)
     {
-        DLog (@"JDK search exception: '%@'", [exception reason]);
+        Log(@"JDK search exception: '%@'", [exception reason]);
     }
 
     return nil;
@@ -906,24 +891,24 @@ NSString * findJDKDylib (
  *  string will return 0.
  */
 int extractMajorVersion (NSString *vstring) {
-  if (vstring == nil) { return 0; }
-  
-  //  Expecting either a java version of form 1.X, 1.X.Y_ZZ or jdk1.X.Y_ZZ.
-  //  Strip everything from start and ending that aren't part of the version number
-  NSCharacterSet* nonDigits = [[NSCharacterSet characterSetWithCharactersInString:@"0123456789."] invertedSet];
-  vstring = [vstring stringByTrimmingCharactersInSet:nonDigits];
-  
-  if([vstring hasPrefix:@"1."]) {  // this is the version < 9 layout. Remove the leading "1."
-    vstring = [vstring substringFromIndex:2];
-  }
-  
-  // the next integer token should be the major version, so read everything up to the first decimal point, if any
-  NSUInteger versionEndLoc = [vstring rangeOfString:@"."].location;
-  if (versionEndLoc != NSNotFound) {
-    vstring = [vstring substringToIndex:versionEndLoc];
-  }
-  
-  return [vstring intValue];
+    if (vstring == nil) { return 0; }
+
+    //  Expecting either a java version of form 1.X, 1.X.Y_ZZ or jdk1.X.Y_ZZ.
+    //  Strip everything from start and ending that aren't part of the version number
+    NSCharacterSet* nonDigits = [[NSCharacterSet characterSetWithCharactersInString:@"0123456789."] invertedSet];
+    vstring = [vstring stringByTrimmingCharactersInSet:nonDigits];
+
+    if([vstring hasPrefix:@"1."]) {  // this is the version < 9 layout. Remove the leading "1."
+        vstring = [vstring substringFromIndex:2];
+    }
+
+    // the next integer token should be the major version, so read everything up to the first decimal point, if any
+    NSUInteger versionEndLoc = [vstring rangeOfString:@"."].location;
+    if (versionEndLoc != NSNotFound) {
+        vstring = [vstring substringToIndex:versionEndLoc];
+    }
+
+    return [vstring intValue];
 }
 
 
@@ -931,20 +916,47 @@ NSString * convertRelativeFilePath(NSString * path) {
     return [path stringByStandardizingPath];
 }
 
-NSString * addDirectoryToSystemArguments(NSUInteger searchPath, NSSearchPathDomainMask domainMask, 
-		NSString *systemProperty, NSMutableArray *systemArguments) {
-	NSArray *paths = NSSearchPathForDirectoriesInDomains(searchPath,domainMask, YES);
+NSString * addDirectoryToSystemArguments(NSUInteger searchPath, NSSearchPathDomainMask domainMask,
+                                         NSString *systemProperty, NSMutableArray *systemArguments) {
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(searchPath,domainMask, YES);
     if ([paths count] > 0) {
-		NSString *basePath = [paths objectAtIndex:0];
-		NSString *directory = [NSString stringWithFormat:@"-D%@=%@", systemProperty, basePath];
-		[systemArguments addObject:directory];
-		return basePath;
+        NSString *basePath = [paths objectAtIndex:0];
+        NSString *directory = [NSString stringWithFormat:@"-D%@=%@", systemProperty, basePath];
+        [systemArguments addObject:directory];
+        return basePath;
     }
     return nil;
 }
 
 void addModifierFlagToSystemArguments(NSEventModifierFlags mask, NSString *systemProperty, NSEventModifierFlags modifierFlags, NSMutableArray *systemArguments) {
-	NSString *modifierFlagValue = (modifierFlags & mask) ? @"true" : @"false";
-	NSString *modifierFlagVar = [NSString stringWithFormat:@"-D%@=%@", systemProperty, modifierFlagValue];
-	[systemArguments addObject:modifierFlagVar];
+    NSString *modifierFlagValue = (modifierFlags & mask) ? @"true" : @"false";
+    NSString *modifierFlagVar = [NSString stringWithFormat:@"-D%@=%@", systemProperty, modifierFlagValue];
+    [systemArguments addObject:modifierFlagVar];
+}
+
+static void Log(NSString *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+
+    if (isDebugging) {
+        NSLog(format, args);
+    }
+
+    if (isVerbose) {
+        NSPrint(format, args);
+    }
+
+    va_end(args);
+}
+
+static void NSPrint(NSString *format, va_list args)
+{
+    NSString *string  = [[NSString alloc] initWithFormat:format arguments:args];
+
+    fprintf(stdout, "%s\n", [string UTF8String]);
+
+#if !__has_feature(objc_arc)
+    [string release];
+#endif
 }
