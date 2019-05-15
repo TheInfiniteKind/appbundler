@@ -227,7 +227,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         // Search for the runtimePath, then make it a libjli.dylib path.
         runtimePath = findJavaDylib (jvmRequired, jrePreferred, jdkPreferred, isDebugging, exactVersionMatch);
         NSFileManager *fm = [[NSFileManager alloc] init];
-        for (id dylibRelPath in @[@"lib/jli", @"lib"]) {
+        for (id dylibRelPath in @[@"jre/lib/jli", @"jre/lib", @"lib/jli", @"lib"]) {
             NSString *candidate = [[runtimePath stringByAppendingPathComponent:dylibRelPath] stringByAppendingPathComponent:@LIBJLI_DY_LIB];
             BOOL isDir;
             BOOL javaDylibFileExists = [fm fileExistsAtPath:candidate isDirectory:&isDir];
@@ -771,7 +771,7 @@ NSString * findJREDylib (
         if (errRead != nil) {
             int version = 0;
 
-            // The result of the version command is 'java version "1.x"' or 'java version "9"'
+            // The result of the version command is 'java version "1.x"' or 'java version "9"' or 'openjdk version "1.x" or 'openjdk version "12.x.y"'
             NSRange vrange = [errRead rangeOfString:@"java version \""];
 
             if (vrange.location != NSNotFound) {
@@ -856,12 +856,16 @@ NSString * findJDKDylib (
         }
 
         int version = 0;
+        
+    //  ... and outRead will include something like 
+    //  "/Library/Java/JavaVirtualMachines/jdk-12.0.1.jdk/Contents/Home" or
+    //  "/Library/Java/JavaVirtualMachines/zulu-8.jdk/Contents/Home"
 
         NSRange vrange = [outRead rangeOfString:@"jdk1."];
         if (vrange.location == NSNotFound) {
-            // try the changed version layout from version 9
-            vrange = [outRead rangeOfString:@"jdk-"];
-            vrange.location += 4;
+            // try the changed version layout from version 9 (e.g., jdk-9, zulu-12)
+            vrange = [outRead rangeOfString:@"-"];
+            vrange.location += 1;
         } else {
             // otherwise remove the leading jdk
             vrange.location += 3;
