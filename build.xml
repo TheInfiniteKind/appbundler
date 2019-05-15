@@ -144,6 +144,24 @@ questions.
             <argument value="foo=bar"/>
         </bundleapp>
     </target>
+    
+    <target name="test-no-bundled-runtime" depends="package">
+        <taskdef name="bundleapp" classname="com.oracle.appbundler.AppBundlerTask"
+            classpath="${ant.project.name}/${folder.bin}/${ant.project.name}-${version}.jar"/>
+        
+        <bundleapp outputdirectory="."
+            debug="true"
+            name="Test"
+            displayname="Test (without a bundled runtime)"
+            identifier="com.oracle.javafx.swing.Test"
+            shortversion="1.0"
+            applicationCategory="public.app-category.developer-tools"
+            mainclassname="com/javafx/main/Main">
+            <classpath file="${ant.project.name}/SwingInterop.jar"/>
+            <option value="-Dapple.laf.useScreenMenuBar=true"/>
+            <argument value="foo=bar"/>
+        </bundleapp>
+    </target>
 
     <target name="test-plugin" depends="package">
         <taskdef name="bundleapp" classname="com.oracle.appbundler.AppBundlerTask"
