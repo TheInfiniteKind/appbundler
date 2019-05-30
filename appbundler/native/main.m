@@ -359,7 +359,9 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     // Get the main class name
     NSString *mainClassName = [infoDictionary objectForKey:@JVM_MAIN_CLASS_NAME_KEY];
 
-    if ( jnlplauncher != nil ) {
+    bool runningModule = [mainClassName containsString:@"/"];
+    
+    if ( jnlplauncher != nil && !runningModule ) {
         
         const_appclasspath = [[runtimePath stringByAppendingPathComponent:@DEPLOY_LIB] fileSystemRepresentation];
         
@@ -571,6 +573,9 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     // Initialize the arguments to JLI_Launch()
     // +5 due to the special directories and the sandbox enabled property
     int argc = 1 + [systemArguments count] + [options count] + [defaultOptions count] + 1 + [arguments count] + newProgargc;
+    if (runningModule)
+        argc++;
+
     char *argv[argc];
 
     int i = 0;
@@ -592,7 +597,11 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         if (isDebugging) { DLog(@"DefaultOption: %@",defaultOption); }
     }
 
-    argv[i++] = strdup([mainClassName UTF8String]);
+    if (runningModule) {
+        argv[i++] = "-m";
+        argv[i++] = strdup([mainClassName UTF8String]);
+    } else
+        argv[i++] = strdup([mainClassName UTF8String]);
 
     for (NSString *argument in arguments) {
         argument = [argument stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];

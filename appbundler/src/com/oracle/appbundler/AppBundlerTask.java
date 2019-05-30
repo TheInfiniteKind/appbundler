@@ -96,6 +96,7 @@ public class AppBundlerTask extends Task {
     private String jnlpLauncherName = null;
     private String jarLauncherName = null;
     private Runtime runtime = null;
+    private JLink jlink = null;
     private ArrayList<FileSet> classPath = new ArrayList<>();
     private ArrayList<FileSet> libraryPath = new ArrayList<>();
     private ArrayList<Option> options = new ArrayList<>();
@@ -230,7 +231,24 @@ public class AppBundlerTask extends Task {
             throw new BuildException("Runtime already specified.");
         }
 
+        if (this.jlink != null) {
+            throw new BuildException("Cannot specify runtime and jlink together.");
+        }
+
         this.runtime = runtime;
+    }
+
+    public void addConfiguredJLink(JLink jlink) throws BuildException {
+        if (this.jlink != null) {
+            throw new BuildException("JLink already specified.");
+        }
+
+        if (this.runtime != null) {
+            throw new BuildException("Cannot specify runtime and jlink together.");
+        }
+
+        jlink.setTask(this);
+        this.jlink = jlink;
     }
 
     public void setClasspathRef(Reference ref) {
@@ -499,6 +517,8 @@ public class AppBundlerTask extends Task {
     private void copyRuntime(File plugInsDirectory) throws IOException {
         if (runtime != null) {
             runtime.copyTo(plugInsDirectory);
+        } else if (jlink != null) {
+            jlink.copyTo(plugInsDirectory);
         }
     }
 
@@ -640,6 +660,8 @@ public class AppBundlerTask extends Task {
             // Write runtime
             if (runtime != null) {
                 writeProperty(xout, "JVMRuntime", runtime.getDir().getParentFile().getParentFile().getName());
+            } else if (jlink != null) {
+                writeProperty(xout, "JVMRuntime", jlink.getDir().getParentFile().getParentFile().getName());
             }
 
             if(jvmRequired != null) {
