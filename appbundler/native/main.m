@@ -232,7 +232,16 @@ int launch(char *commandName, int progargc, char *progargv[], int launchCount) {
     else {
         // Search for the runtimePath, then make it a libjli.dylib path.
         runtimePath = findJavaDylib (jvmRequired, jrePreferred, jdkPreferred, isDebugging, exactVersionMatch);
-        javaDylib = [[runtimePath stringByAppendingPathComponent:@"lib/jli"] stringByAppendingPathComponent:@LIBJLI_DY_LIB];
+        NSFileManager *fm = [[NSFileManager alloc] init];
+        for (id dylibRelPath in @[@"jre/lib/jli", @"jre/lib", @"lib/jli", @"lib"]) {
+            NSString *candidate = [[runtimePath stringByAppendingPathComponent:dylibRelPath] stringByAppendingPathComponent:@LIBJLI_DY_LIB];
+            BOOL isDir;
+            BOOL javaDylibFileExists = [fm fileExistsAtPath:candidate isDirectory:&isDir];
+            if (javaDylibFileExists && !isDir) {
+                javaDylib = candidate;
+                break;
+            }
+        }
 
         Log(@"Java Runtime Dylib Path: '%@'", convertRelativeFilePath(javaDylib));
     }
@@ -352,6 +361,8 @@ int launch(char *commandName, int progargc, char *progargv[], int launchCount) {
     // Get the main class name
     NSString *mainClassName = [infoDictionary objectForKey:@JVM_MAIN_CLASS_NAME_KEY];
 
+    bool runningModule = [mainClassName containsString:@"/"];
+    
     if ( jnlplauncher != nil ) {
 
         const_appclasspath = [[runtimePath stringByAppendingPathComponent:@DEPLOY_LIB] fileSystemRepresentation];
@@ -400,28 +411,32 @@ int launch(char *commandName, int progargc, char *progargv[], int launchCount) {
 
         // Add the jnlp as argument so that javaws.Main can read and delete it
         [arguments addObject:tempFileName];
+        
+    } else {
+        // It is impossible to combine modules and jar launcher
+        if ( runningModule && jarlauncher != nil ) {
+            [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
+                reason:@"Modules cannot be used in conjuction with jar launcher"
+                userInfo:nil] raise];
+        }
 
-    } else
         // Either mainClassName or jarLauncher has to be set since this is not a jnlpLauncher
         if ( mainClassName == nil && jarlauncher == nil ) {
             [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
-                                     reason:NSLocalizedString(@"MainClassNameRequired", @UNSPECIFIED_ERROR)
-                                   userInfo:nil] raise];
+                reason:NSLocalizedString(@"MainClassNameRequired", @UNSPECIFIED_ERROR)
+                userInfo:nil] raise];
         }
-
+    }
+    
     Log(@"Main Class Name: '%@'", mainClassName);
-
 
     // If a jar file is defined as launcher, disacard the javaPath
     if ( jarlauncher != nil ) {
         [classPath appendFormat:@":%@/%@", javaPath, jarlauncher];
-    } else {
-
+    } else if ( !runningModule ) {
         NSArray *cp = [infoDictionary objectForKey:@JVM_CLASSPATH_KEY];
         if (cp == nil) {
-
             // Implicit classpath, so use the contents of the "Java" folder to build an explicit classpath
-
             [classPath appendFormat:@"%@/Classes", javaPath];
             NSFileManager *defaultFileManager = [NSFileManager defaultManager];
             NSArray *javaDirectoryContents = [defaultFileManager contentsOfDirectoryAtPath:javaPath error:nil];
@@ -450,7 +465,7 @@ int launch(char *commandName, int progargc, char *progargv[], int launchCount) {
         }
     }
 
-    if ( classPath != nil ) {
+    if ( classPath != nil && !runningModule ) {
         [systemArguments addObject:classPath];
     }
 
@@ -563,6 +578,9 @@ int launch(char *commandName, int progargc, char *progargv[], int launchCount) {
     // Initialize the arguments to JLI_Launch()
     // +5 due to the special directories and the sandbox enabled property
     int argc = 1 + [systemArguments count] + [options count] + [defaultOptions count] + 1 + [arguments count] + newProgargc;
+    if (runningModule)
+        argc++;
+
     char *argv[argc];
 
     int i = 0;
@@ -584,7 +602,11 @@ int launch(char *commandName, int progargc, char *progargv[], int launchCount) {
         Log(@"DefaultOption: %@",defaultOption);
     }
 
-    argv[i++] = strdup([mainClassName UTF8String]);
+    if (runningModule) {
+        argv[i++] = "-m";
+        argv[i++] = strdup([mainClassName UTF8String]);
+    } else
+        argv[i++] = strdup([mainClassName UTF8String]);
 
     for (NSString *argument in arguments) {
         argument = [argument stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
@@ -755,7 +777,7 @@ NSString * findJREDylib (
         if (errRead != nil) {
             int version = 0;
 
-            // The result of the version command is 'java version "1.x"' or 'java version "9"'
+            // The result of the version command is 'java version "1.x"' or 'java version "9"' or 'openjdk version "1.x" or 'openjdk version "12.x.y"'
             NSRange vrange = [errRead rangeOfString:@"java version \""];
 
             if (vrange.location != NSNotFound) {
@@ -836,12 +858,16 @@ NSString * findJDKDylib (
         }
 
         int version = 0;
+        
+    //  ... and outRead will include something like 
+    //  "/Library/Java/JavaVirtualMachines/jdk-12.0.1.jdk/Contents/Home" or
+    //  "/Library/Java/JavaVirtualMachines/zulu-8.jdk/Contents/Home"
 
         NSRange vrange = [outRead rangeOfString:@"jdk1."];
         if (vrange.location == NSNotFound) {
-            // try the changed version layout from version 9
-            vrange = [outRead rangeOfString:@"jdk-"];
-            vrange.location += 4;
+            // try the changed version layout from version 9 (e.g., jdk-9, zulu-12)
+            vrange = [outRead rangeOfString:@"-"];
+            vrange.location += 1;
         } else {
             // otherwise remove the leading jdk
             vrange.location += 3;
