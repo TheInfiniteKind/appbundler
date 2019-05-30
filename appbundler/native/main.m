@@ -361,7 +361,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
 
     bool runningModule = [mainClassName containsString:@"/"];
     
-    if ( jnlplauncher != nil && !runningModule ) {
+    if ( jnlplauncher != nil ) {
         
         const_appclasspath = [[runtimePath stringByAppendingPathComponent:@DEPLOY_LIB] fileSystemRepresentation];
         
@@ -410,12 +410,20 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         // Add the jnlp as argument so that javaws.Main can read and delete it
         [arguments addObject:tempFileName];
         
-    } else
-    // Either mainClassName or jarLauncher has to be set since this is not a jnlpLauncher
-    if ( mainClassName == nil && jarlauncher == nil ) {
-        [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
-            reason:NSLocalizedString(@"MainClassNameRequired", @UNSPECIFIED_ERROR)
-            userInfo:nil] raise];
+    } else {
+        // It is impossible to combine modules and jar launcher
+        if ( runningModule && jarlauncher != nil ) {
+            [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
+                reason:@"Modules cannot be used in conjuction with jar launcher"
+                userInfo:nil] raise];
+        }
+
+        // Either mainClassName or jarLauncher has to be set since this is not a jnlpLauncher
+        if ( mainClassName == nil && jarlauncher == nil ) {
+            [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
+                reason:NSLocalizedString(@"MainClassNameRequired", @UNSPECIFIED_ERROR)
+                userInfo:nil] raise];
+        }
     }
     
     if (isDebugging) {
@@ -425,7 +433,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     // If a jar file is defined as launcher, disacard the javaPath
     if ( jarlauncher != nil ) {
         [classPath appendFormat:@":%@/%@", javaPath, jarlauncher];
-    } else {
+    } else if ( !runningModule ) {
         
         NSArray *cp = [infoDictionary objectForKey:@JVM_CLASSPATH_KEY];
         if (cp == nil) {
@@ -460,7 +468,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         }
     }
 
-    if ( classPath != nil ) {
+    if ( classPath != nil && !runningModule ) {
         [systemArguments addObject:classPath];
     }
 
