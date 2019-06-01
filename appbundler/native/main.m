@@ -28,6 +28,8 @@
 #include <dlfcn.h>
 #include <jni.h>
 #include <pwd.h>
+#include <sys/types.h>
+#include <sys/sysctl.h>
 
 #define JAVA_LAUNCH_ERROR "JavaLaunchError"
 
@@ -59,11 +61,7 @@
 #define DEPLOY_LIB    "lib/deploy.jar"
 
 
-//*
-    #define DLog(...) NSLog(@"%s %@", __PRETTY_FUNCTION__, [NSString stringWithFormat:__VA_ARGS__])
-/*/
-    #define DLog(...) do { } while (0)
-//*/
+#define DLog(...) NSLog(@"%s %@", __PRETTY_FUNCTION__, [NSString stringWithFormat:__VA_ARGS__])
 
 
 typedef int (JNICALL *JLI_Launch_t)(int argc, char ** argv,
@@ -123,6 +121,20 @@ int main(int argc, char *argv[]) {
 
     return result;
 }
+
+
+// Get the amount of physical RAM on this machine
+int64_t get_ram_size() {
+    int mib[2] = {CTL_HW, HW_MEMSIZE};
+    int64_t physical_memory;
+    size_t length = sizeof(int64_t);
+    if(sysctl(mib, 2, &physical_memory, &length, NULL, 0)==0) {
+        return physical_memory;
+    }
+    return 0;
+}
+
+
 
 int launch(char *commandName, int progargc, char *progargv[], int launchCount) {
 
@@ -574,7 +586,24 @@ int launch(char *commandName, int progargc, char *progargv[], int launchCount) {
             setenv([key UTF8String], [newValue UTF8String], 1);
         }
     }
-
+    
+    // replace any maximum memory parameters that specify a percentage of available ram
+    for(int i=0; i<options.count; i++) {
+        NSString* option = [options objectAtIndex:i];
+        if([option hasPrefix:@"-Xmx"] && [option hasSuffix:@"%"]) {
+            NSString* percentAmtStr = [option substringWithRange:NSMakeRange(4, option.length-5)];
+            double percentAmt = percentAmtStr.doubleValue;
+            if(percentAmt >= 1 && percentAmt <= 200.0001) {
+                int64_t ram_size = get_ram_size();
+                if(ram_size > 0 ) {
+                    double ramToUse = (percentAmt/100) * ram_size;
+                    ramToUse = ramToUse/1000000; // convert from bytes to megabytes
+                    [options replaceObjectAtIndex:i withObject:[NSString stringWithFormat:@"-Xmx%0.0fm", ramToUse]];
+                }
+            }
+        }
+    }
+    
     // Initialize the arguments to JLI_Launch()
     // +5 due to the special directories and the sandbox enabled property
     int argc = 1 + [systemArguments count] + [options count] + [defaultOptions count] + 1 + [arguments count] + newProgargc;
