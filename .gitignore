@@ -1,0 +1,12 @@
+appbundler.xcodeproj/
+appbundler.xcodeproj/project.pbxproj
+appbundler.xcodeproj.xcodeproj/project.xcworkspace/
+appbundler.xcodeproj.xcodeproj/xcuserdata/
+
+Test.app
+TestPlugin.app
+
+appbundler/bin/
+Build/
+
+.DS_Store
