@@ -40,9 +40,7 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -77,7 +75,7 @@ public class AppBundlerTask extends Task {
     private String copyright = "";
     private String privileged = null;
     private String workingDirectory = null;
-    private String minimumSystemVersion = null;
+    private String minimumSystemVersion = "10.7";
 
     private String jvmRequired = null;
     private boolean jrePreferred = false;
@@ -523,18 +521,19 @@ public class AppBundlerTask extends Task {
     }
 
     private void copyClassPathRefEntries(File javaDirectory) throws IOException {
-        if(classPathRef != null) {
-            org.apache.tools.ant.types.Path classpath =
-
-                    (org.apache.tools.ant.types.Path) classPathRef.getReferencedObject(getProject());
-
-            Iterator<FileResource> iter = (Iterator<FileResource>)(Object)classpath.iterator();
-            while(iter.hasNext()) {
-                FileResource resource = iter.next();
-                File source = resource.getFile();
-                File destination = new File(javaDirectory, source.getName());
-                copy(source, destination);
+        if (classPathRef != null) {
+          org.apache.tools.ant.types.Path classpath =
+            (org.apache.tools.ant.types.Path) classPathRef.getReferencedObject(getProject());
+          Iterator iter = classpath.iterator();
+          while (iter.hasNext()) {
+            Object resource = iter.next();
+            if (resource instanceof FileResource) {
+              FileResource fileResource = (FileResource) resource;
+              File source = fileResource.getFile();
+              File destination = new File(javaDirectory, source.getName());
+              copy(source, destination);
             }
+          }
         }
     }
 
@@ -753,7 +752,7 @@ public class AppBundlerTask extends Task {
 
             // Write arguments
             writeStringArray(xout, "JVMArguments",arguments);
-
+            
             // Write arbitrary key-value pairs
             for (PlistEntry item : plistEntries) {
                 writeKey(xout, item.getKey());
@@ -841,42 +840,42 @@ public class AppBundlerTask extends Task {
         }
     }
 
-    public void writeBundleDocuments(XMLStreamWriter xout,
-            final ArrayList<BundleDocument> bundleDocuments) throws XMLStreamException {
+  public void writeBundleDocuments(XMLStreamWriter xout,
+                                   final ArrayList<BundleDocument> bundleDocuments) throws XMLStreamException {
 
-        xout.writeStartElement(ARRAY_TAG);
-        xout.writeCharacters("\n");
+    xout.writeStartElement(ARRAY_TAG);
+    xout.writeCharacters("\n");
 
-        for(BundleDocument bundleDocument: bundleDocuments) {
-            xout.writeStartElement(DICT_TAG);
-            xout.writeCharacters("\n");
+    for(BundleDocument bundleDocument: bundleDocuments) {
+      xout.writeStartElement(DICT_TAG);
+      xout.writeCharacters("\n");
 
-            final List<String> contentTypes = bundleDocument.getContentTypes();
-            if (contentTypes != null) {
-                writeStringArray(xout, "LSItemContentTypes", contentTypes);
-            } else {
-                writeStringArray(xout, "CFBundleTypeExtensions", bundleDocument.getExtensions());
-                writeProperty(xout, "LSTypeIsPackage", bundleDocument.isPackage());
-            }
-            writeStringArray(xout, "NSExportableTypes", bundleDocument.getExportableTypes());
+      final List<String> contentTypes = bundleDocument.getContentTypes();
+      if (contentTypes != null) {
+        writeStringArray(xout, "LSItemContentTypes", contentTypes);
+      } else {
+        writeStringArray(xout, "CFBundleTypeExtensions", bundleDocument.getExtensions());
+        writeProperty(xout, "LSTypeIsPackage", bundleDocument.isPackage());
+      }
+      writeStringArray(xout, "NSExportableTypes", bundleDocument.getExportableTypes());
 
-            final File ifile = bundleDocument.getIconFile();
-            writeProperty(xout, "CFBundleTypeIconFile", ifile != null ?
-                        ifile.getName() : bundleDocument.getIcon());
+      final File ifile = bundleDocument.getIconFile();
+      writeProperty(xout, "CFBundleTypeIconFile", ifile != null ?
+                                                  ifile.getName() : bundleDocument.getIcon());
 
-            writeProperty(xout, "CFBundleTypeName", bundleDocument.getName());
-            writeProperty(xout, "CFBundleTypeRole", bundleDocument.getRole());
-            writeProperty(xout, "LSHandlerRank", bundleDocument.getHandlerRank());
+      writeProperty(xout, "CFBundleTypeName", bundleDocument.getName());
+      writeProperty(xout, "CFBundleTypeRole", bundleDocument.getRole());
+      writeProperty(xout, "LSHandlerRank", bundleDocument.getHandlerRank());
 
-            xout.writeEndElement();
-            xout.writeCharacters("\n");
-        }
-
-        xout.writeEndElement();
-        xout.writeCharacters("\n");
+      xout.writeEndElement();
+      xout.writeCharacters("\n");
     }
 
-    public void writeTypeDeclarations(XMLStreamWriter xout,
+    xout.writeEndElement();
+    xout.writeCharacters("\n");
+  }
+  
+  public void writeTypeDeclarations(XMLStreamWriter xout,
             final ArrayList<TypeDeclaration> typeDeclarations) throws XMLStreamException {
         xout.writeStartElement(ARRAY_TAG);
         xout.writeCharacters("\n");
