@@ -487,8 +487,9 @@ public class AppBundlerTask extends Task {
                 File file = new File(resourcesDirectory, zipEntry.getName());
 
                 if (zipEntry.isDirectory()) {
-                    file.mkdir();
+                    file.mkdirs();
                 } else {
+                    file.getParentFile().mkdirs();
                     OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(file), BUFFER_SIZE);
 
                     try {
