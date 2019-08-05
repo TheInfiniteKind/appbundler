@@ -34,6 +34,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.net.URL;
 import java.nio.file.Files;
@@ -54,6 +55,8 @@ import org.apache.tools.ant.Task;
 import org.apache.tools.ant.types.FileSet;
 import org.apache.tools.ant.types.Reference;
 import org.apache.tools.ant.types.resources.FileResource;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * App bundler Ant task.
@@ -596,7 +599,7 @@ public class AppBundlerTask extends Task {
     }
 
     private void writeInfoPlist(File file) throws IOException {
-        Writer out = new BufferedWriter(new FileWriter(file));
+        Writer out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), UTF_8));
         XMLOutputFactory output = XMLOutputFactory.newInstance();
 
         try {
