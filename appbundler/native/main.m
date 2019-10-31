@@ -372,7 +372,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     // Get the main class name
     NSString *mainClassName = [infoDictionary objectForKey:@JVM_MAIN_CLASS_NAME_KEY];
 
-    bool runningModule = [mainClassName containsString:@"/"];
+    bool runningModule = [mainClassName rangeOfString:@"/"].location != NSNotFound;
     
     if ( jnlplauncher != nil ) {
 
