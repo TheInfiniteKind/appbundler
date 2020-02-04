@@ -4,7 +4,6 @@ appbundler
 A fork of the [Java Application Bundler](https://svn.java.net/svn/appbundler~svn) 
 with the following changes:
 
-- The native binary is created as universal (32/64)
 - Fixes [icon not showing bug](http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=7159381) in `JavaAppLauncher`
 - Adds `LC_CTYPE` environment variable to the `Info.plist` file in order to fix an [issue with `File.exists()` in OpenJDK 7](http://java.net/jira/browse/MACOSX_PORT-165)  **(Contributed by Steve Hannah)**
 - Allows to specify the name of the executable instead of using the default `"JavaAppLauncher"` **(contributed by Karl von Randow)**
@@ -18,8 +17,8 @@ with the following changes:
 - Allows overriding of passed JVM options by the bundled app itself via java.util.Preferences **(contributed by Hendrik Schreiber)**
 - Allows writing arbitrary key-value pairs to `Info.plist` via `plistentry`
 - Allows setting of environment variables via `Info.plist`
-- Allows running the Application as `privileged` - e.g. for Setup **(Contributed by Gerry Weiﬂbach)**
-- Allows specifying a JNLP file (`jnlplaunchername`) as alternative to the `mainclassname` which can then be launched without hassle when the Application is signed. See [How to sign (dynamic) JNLP files for OSX 10.8.4 and Gatekeeper](http://stackoverflow.com/questions/16958130/how-to-sign-dynamic-jnlp-files-for-osx-10-8-4-and-gatekeeper) **(Contributed by Gerry Weiﬂbach)**
+- Allows running the Application as `privileged` - e.g. for Setup **(Contributed by Gerry Wei√übach)**
+- Allows specifying a JNLP file (`jnlplaunchername`) as alternative to the `mainclassname` which can then be launched without hassle when the Application is signed. See [How to sign (dynamic) JNLP files for OSX 10.8.4 and Gatekeeper](http://stackoverflow.com/questions/16958130/how-to-sign-dynamic-jnlp-files-for-osx-10-8-4-and-gatekeeper) **(Contributed by Gerry Wei√übach)**
 
 These are the system properties passed to the JVM:
 
