@@ -83,6 +83,10 @@ static char** progargv = NULL;
 static int progargc = 0;
 static int launchCount = 0;
 
+static dispatch_queue_t iCloudDriveMonitoringQueue = NULL;
+static NSString *iCloudDriveSymlinkURL = nil;
+static id iCloudDriveIdentityToken = nil;
+
 const char * tmpFile();
 int launch(char *, int, char **);
 
@@ -95,6 +99,7 @@ NSString * addDirectoryToSystemArguments(NSUInteger, NSSearchPathDomainMask, NSS
 void addModifierFlagToSystemArguments(NSEventModifierFlags, NSString *, NSEventModifierFlags, NSMutableArray *);
 static void Log(NSString *format, ...);
 static void NSPrint(NSString *format, va_list args);
+static void updateiCloudSymlink(void);
 
 int main(int argc, char *argv[]) {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -509,6 +514,38 @@ int launch(char *commandName, int progargc, char *progargv[]) {
             [systemArguments addObject:[NSString stringWithFormat:@"-DUserHome=%s", pwd.pw_dir]];
         }
     }
+
+	// Ubiquity container (iCloud) symlink.
+	{
+	    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES);
+	    if ([paths count] > 0) {
+			// TODO: this should maybe be a parameter?
+			NSString *symlinkName = @"iCloudDrive";
+	        NSString *basePath = [paths objectAtIndex:0];
+			NSURL *baseURL = [NSURL fileURLWithPath:basePath];
+			iCloudDriveSymlinkURL = [baseURL URLByAppendingPathComponent:symlinkName isDirectory:NO];
+		}
+
+		if (iCloudDriveSymlinkURL) {
+			NSString *path = [iCloudDriveSymlinkURL path];
+			NSString *arg = [NSString stringWithFormat:@"-D%@=%@", @"iCloudDriveSymlink", path];
+			[systemArguments addObject:arg];
+
+			iCloudDriveMonitoringQueue = dispatch_queue_create("iCloudDriveMonitoring", DISPATCH_QUEUE_SERIAL);
+			// We don't ever release this queue or remove this observer, because we want the monitoring
+			// to continue until the application exits.
+			dispatch_async(iCloudDriveMonitoringQueue, ^{
+				updateiCloudSymlink();
+			});
+			[[NSNotificationCenter defaultCenter]
+				addObserverForName:NSUbiquityIdentityDidChangeNotification
+				object:nil
+				queue:iCloudDriveMonitoringQueue
+				usingBlock:^{
+					updateiCloudSymlink();
+				}];
+		}
+	}
 
     //Sandbox
     NSString *containersDirectory = [libraryDirectory stringByAppendingPathComponent:@"Containers"];
@@ -1013,4 +1050,43 @@ static void NSPrint(NSString *format, va_list args)
 #if !__has_feature(objc_arc)
     [string release];
 #endif
+}
+
+static void updateiCloudSymlink(NSString *symlinkURL) {
+	NSURL *iCloudDriveURL = nil;
+	NSFileManager *manager = [[NSFileManager alloc] init];
+	id newToken = [manager ubiquityIdentityToken];
+	if ([iCloudDriveIdentityToken isEqual:newToken]) return;
+	iCloudDriveIdentityToken = newToken;
+
+	// This call can take significant time, so don't call updateiCloudSymlink() on the main thread.
+	// TODO: This'll just use the first container in the entitlements; container id could be a setting?
+	iCloudDriveURL = [manager URLForUbiquityContainerIdentifier:nil];
+	if (iCloudDriveURL) {
+		NSError *error = nil;
+		NSURL *temporaryDirectoryURL = [manager
+			URLForDirectory:NSItemReplacementDirectory
+			inDomain:NSUserDomainMask
+			appropriateForURL:iCloudDriveSymlinkURL
+			create:YES
+			error:&error];
+		if (! temporaryDirectoryURL) {
+			// TODO: could log the error here.
+			return;
+		}
+		NSURL *temporarySymlinkURL = [temporaryDirectoryURL
+			URLByAppendingPathComponent:[iCloudDriveSymlinkURL lastPathComponent]
+			isDirectory:NO];
+		char *temporarySymlinkPath = [[temporarySymlinkURL path] UTF8String];
+		char *iCloudDriveSymlinkPath = [[iCloudDriveSymlinkURL path] UTF8String];
+		char *iCloudDrivePath = [[iCloudDriveURL path] UTF8String];
+		// TODO: check return values and errno.
+		unlink(temporarySymlinkPath); // Ignore if this fails due to ENOENT
+		symlink(iCloudDrivePath, temporarySymlinkPath);
+		rename(temporarySymlinkPath, iCloudDriveSymlinkPath);
+	} else {
+		char *iCloudDriveSymlinkPath = [[iCloudDriveSymlinkURL path] UTF8String];
+		// TODO: check return values and errno.
+		unlink(temporarySymlinkPath); // Ignore if this fails due to ENOENT
+	}
 }
