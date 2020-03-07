@@ -5,9 +5,11 @@ appbundler.xcodeproj.xcodeproj/xcuserdata/
 
 Test.app
 TestPlugin.app
-TestInfoFile.app
+TestICloudDrive.app
 
 appbundler/bin/
+appbundler/runtime/classes/
+appbundler/runtime/jar/
 appbundler/test/classes/
 appbundler/test/jar/
 Build/

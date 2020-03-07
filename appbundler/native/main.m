@@ -96,7 +96,8 @@ static int launchCount = 0;
  ** be available immediately on app launch; it is recommended to check for and read this file
  ** before accessing the container to be sure that the app has the up-to-date path.
  */
-static NSURL *iCloudDriveInfoFileURL = nil;
+static NSLock *iCloudDriveURLLock = nil;
+static NSURL *iCloudDriveURL = nil;
 static id iCloudDriveIdentityToken = nil;
 static dispatch_queue_t iCloudDriveMonitoringQueue = NULL;
 
@@ -112,7 +113,7 @@ NSString * addDirectoryToSystemArguments(NSUInteger, NSSearchPathDomainMask, NSS
 void addModifierFlagToSystemArguments(NSEventModifierFlags, NSString *, NSEventModifierFlags, NSMutableArray *);
 static void Log(NSString *format, ...);
 static void NSPrint(NSString *format, va_list args);
-static void updateiCloudDriveInfoFile(void);
+static void updateiCloudDriveInfo(void);
 
 int main(int argc, char *argv[]) {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -530,38 +531,32 @@ int launch(char *commandName, int progargc, char *progargv[]) {
 
 	// Ubiquity container (iCloud) info file.
 	{
-	    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES);
-	    if ([paths count] > 0) {
-			// TODO: this should maybe be a parameter?
-			NSString *infoFileName = @"iCloudDrive";
-	        NSString *appSupportPath = [paths objectAtIndex:0];
-	        NSURL *appSupportURL = [NSURL fileURLWithPath:appSupportPath];
-			// TODO: needs to be the app name!! And definitely needs to permit a parameter
-			NSURL *baseURL = [appSupportURL URLByAppendingPathComponent:@"foo" isDirectory:YES];
-			iCloudDriveInfoFileURL = [baseURL URLByAppendingPathComponent:infoFileName isDirectory:NO];
-		}
+		iCloudDriveURLLock = [NSLock new];
 
-		if (iCloudDriveInfoFileURL) {
-			NSString *path = [iCloudDriveInfoFileURL path];
-			NSString *arg = [NSString stringWithFormat:@"-D%@=%@", @"iCloudDriveInfoFile", path];
-			[systemArguments addObject:arg];
+		// iCloudDriveIdentityToken = [manager ubiquityIdentityToken];
+		// BOOL iCloudAvailable = (iCloudDriveIdentityToken == nil);
+		//
+		// NSString *arg;
+		// arg = [NSString stringWithFormat:@"-D%@=%@", @"iCloudAvailable", (iCloudAvailable ? @"true" : @"false")];
+		// [systemArguments addObject:arg];
+		// arg = [NSString stringWithFormat:@"-D%@=", @"iCloudDrivePath"];
+		// [systemArguments addObject:arg];
 
-			iCloudDriveMonitoringQueue = dispatch_queue_create("iCloudDriveMonitoring", DISPATCH_QUEUE_SERIAL);
-			// We don't ever release this queue or remove this observer, because we want the monitoring
-			// to continue until the application exits.
-			dispatch_async(iCloudDriveMonitoringQueue, ^{
-				updateiCloudDriveInfoFile();
-			});
-			[[NSNotificationCenter defaultCenter]
-				addObserverForName:NSUbiquityIdentityDidChangeNotification
-				object:nil
-				queue:nil
-				usingBlock:^(NSNotification *notification) {
-					dispatch_async(iCloudDriveMonitoringQueue, ^{
-						updateiCloudDriveInfoFile();
-					});
-				}];
-		}
+		// We don't ever release this queue or remove this observer, because we want the monitoring
+		// to continue until the application exits.
+		iCloudDriveMonitoringQueue = dispatch_queue_create("iCloudDriveMonitoring", DISPATCH_QUEUE_SERIAL);
+		dispatch_async(iCloudDriveMonitoringQueue, ^{
+			updateiCloudDriveInfo();
+		});
+		[[NSNotificationCenter defaultCenter]
+			addObserverForName:NSUbiquityIdentityDidChangeNotification
+			object:nil
+			queue:nil
+			usingBlock:^(NSNotification *notification) {
+				dispatch_async(iCloudDriveMonitoringQueue, ^{
+					updateiCloudDriveInfo();
+				});
+			}];
 	}
 
     //Sandbox
@@ -1069,34 +1064,36 @@ static void NSPrint(NSString *format, va_list args)
 #endif
 }
 
-static void updateiCloudDriveInfoFile() {
-	if (! iCloudDriveInfoFileURL) return;
+static void updateiCloudDriveInfo() {
 	NSFileManager *manager = [[NSFileManager alloc] init];
 	id newToken = [manager ubiquityIdentityToken];
 	if ([iCloudDriveIdentityToken isEqual:newToken]) return;
-	iCloudDriveIdentityToken = newToken;
+	iCloudDriveIdentityToken = newToken;	
 
-	// This call can take significant time, so don't call updateiCloudDriveInfoFile() on the main thread.
-	// TODO: This'll just use the first container in the entitlements; container id could be a setting?
-	NSURL *iCloudDriveURL = [manager URLForUbiquityContainerIdentifier:nil];
-	if (iCloudDriveURL) {
-		NSString *iCloudDrivePath = [iCloudDriveURL path];
-		NSError *error = nil;
-		BOOL success = [iCloudDrivePath
-			writeToURL:iCloudDriveInfoFileURL
-			atomically:YES
-			encoding:NSUTF8StringEncoding
-			error:&error];
-		if (! success) {
-			// TODO: could log the error here.
-			return;
-		}
+	if (iCloudDriveIdentityToken) {
+		// This call can take significant time, so don't call updateiCloudDriveInfo() on the main thread.
+		// TODO: This'll just use the first container in the entitlements; container id could be a setting?
+		NSURL *url = [manager URLForUbiquityContainerIdentifier:nil];
+
+		[iCloudDriveURLLock lock];
+		iCloudDriveURL = url;
+		[iCloudDriveURLLock unlock];
 	} else {
-		NSError *error = nil;
-		BOOL success = [manager removeItemAtURL:iCloudDriveInfoFileURL error:&error];
-		if (! success) {
-			// TODO: check error domain and code; ignore if it's NSCocoaErrorDomain and NSFileNoSuchFileError,
-			// 		 because it's okay if the file simply never existed in the first place.
-		}
+		[iCloudDriveURLLock lock];
+		iCloudDriveURL = nil;
+		[iCloudDriveURLLock unlock];
+	}
+}
+
+JNIEXPORT jstring JNICALL Java_com_oracle_appbundler_runtime_ICloudDrive_jni_1getPath(JNIEnv *env, jclass cls) {
+	NSURL *url;
+	[iCloudDriveURLLock lock];
+	url = iCloudDriveURL;
+	[iCloudDriveURLLock unlock];
+
+	if (url) {
+		return (*env)->NewStringUTF(env, [[url path] UTF8String]);
+	} else {
+		return NULL;
 	}
 }
