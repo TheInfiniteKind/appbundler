@@ -534,8 +534,10 @@ int launch(char *commandName, int progargc, char *progargv[]) {
 	    if ([paths count] > 0) {
 			// TODO: this should maybe be a parameter?
 			NSString *infoFileName = @"iCloudDrive";
-	        NSString *basePath = [paths objectAtIndex:0];
-			NSURL *baseURL = [NSURL fileURLWithPath:basePath];
+	        NSString *appSupportPath = [paths objectAtIndex:0];
+	        NSURL *appSupportURL = [NSURL fileURLWithPath:appSupportPath];
+			// TODO: needs to be the app name!! And definitely needs to permit a parameter
+			NSURL *baseURL = [appSupportURL URLByAppendingPathComponent:@"foo" isDirectory:YES];
 			iCloudDriveInfoFileURL = [baseURL URLByAppendingPathComponent:infoFileName isDirectory:NO];
 		}
 

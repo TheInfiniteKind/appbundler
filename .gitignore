@@ -5,8 +5,11 @@ appbundler.xcodeproj.xcodeproj/xcuserdata/
 
 Test.app
 TestPlugin.app
+TestInfoFile.app
 
 appbundler/bin/
+appbundler/test/classes/
+appbundler/test/jar/
 Build/
 
 .DS_Store

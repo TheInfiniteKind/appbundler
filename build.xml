@@ -145,6 +145,52 @@ questions.
             <argument value="foo=bar"/>
         </bundleapp>
     </target>
+
+    <target name="test-info-file" depends="package">
+        <taskdef name="bundleapp" classname="com.oracle.appbundler.AppBundlerTask"
+            classpath="${ant.project.name}/${folder.bin}/${ant.project.name}-${version}.jar"/>
+
+        <mkdir dir="${ant.project.name}/test/classes"/>
+        <javac destDir="${ant.project.name}/test/classes"
+            includejavaruntime="true"
+            includeantruntime="true"
+            target="1.8"
+            source="1.8"
+            deprecation="true"
+            debug="true"
+            encoding="UTF-8"
+            failonerror="true">
+            <src>
+                <dirset dir="${ant.project.name}">
+                    <include name="test"/>
+                </dirset>
+            </src>
+            <compilerarg line="-Xlint:all"/>
+            <classpath>
+                <dirset dir="${basedir}" includes="${ant.project.name}/test/classes"/>
+                <fileset dir="${ant.project.name}" includes="lib/**/*.jar"/>
+            </classpath>
+        </javac>
+
+        <mkdir dir="${ant.project.name}/test/jar"/>
+		<jar destfile="${ant.project.name}/test/jar/TestInfoFile.jar">
+            <fileset dir="${ant.project.name}/test/classes"/>
+		</jar>
+
+        <bundleapp outputdirectory="."
+            debug="true"
+            name="TestInfoFile"
+            displayname="TestInfoFile"
+            identifier="com.oracle.javafx.swing.Test"
+            shortversion="1.0"
+            applicationCategory="public.app-category.developer-tools"
+            mainclassname="TestInfoFile">
+			<runtime dir="${env.JAVA_HOME}"/>
+            <classpath file="${ant.project.name}/test/jar/TestInfoFile.jar"/>
+            <option value="-Dapple.laf.useScreenMenuBar=true"/>
+            <argument value="foo=bar"/>
+        </bundleapp>
+    </target>
     
     <target name="test-no-bundled-runtime" depends="package">
         <taskdef name="bundleapp" classname="com.oracle.appbundler.AppBundlerTask"
