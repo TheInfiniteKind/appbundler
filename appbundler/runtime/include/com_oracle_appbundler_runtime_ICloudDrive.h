@@ -9,10 +9,10 @@ extern "C" {
 #endif
 /*
  * Class:     com_oracle_appbundler_runtime_ICloudDrive
- * Method:    jni_getPath
+ * Method:    jniGetPath
  * Signature: ()Ljava/lang/String;
  */
-JNIEXPORT jstring JNICALL Java_com_oracle_appbundler_runtime_ICloudDrive_jni_1getPath
+JNIEXPORT jstring JNICALL Java_com_oracle_appbundler_runtime_ICloudDrive_jniGetPath
   (JNIEnv *, jclass);
 
 #ifdef __cplusplus

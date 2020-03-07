@@ -1085,7 +1085,12 @@ static void updateiCloudDriveInfo() {
 	}
 }
 
-JNIEXPORT jstring JNICALL Java_com_oracle_appbundler_runtime_ICloudDrive_jni_1getPath(JNIEnv *env, jclass cls) {
+JNIEXPORT jint JNICALL JNI_OnLoad_ICloudDriveNative(JavaVM *vm, void *reserved) {
+	// We need this function for System.LoadLibrary("ICloudDriveNative") to succeed.
+	return JNI_VERSION_1_8;
+}
+
+JNIEXPORT jstring JNICALL Java_com_oracle_appbundler_runtime_ICloudDrive_jniGetPath(JNIEnv *env, jclass cls) {
 	NSURL *url;
 	[iCloudDriveURLLock lock];
 	url = iCloudDriveURL;

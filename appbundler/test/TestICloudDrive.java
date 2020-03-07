@@ -6,10 +6,14 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import com.oracle.appbundler.runtime.ICloudDrive;
 
+import java.lang.reflect.*;
+
 public class TestICloudDrive {
 	public static class ICloudDriveChecker implements Runnable {
 	    @Override
 	    public void run() {
+			System.loadLibrary("ICloudDriveNative");
+
 			while (true) {
 		        try {
 	            	Thread.sleep(1000);
@@ -17,14 +21,10 @@ public class TestICloudDrive {
 					return;
 		        }
 
-				System.loadLibrary("JavaAppLauncher");
-
 				String path;
 				try {
 					path = ICloudDrive.getPath();
 				} catch (java.lang.UnsatisfiedLinkError e) {
-					System.out.println(e.getMessage());
-					System.out.println(e.getCause());
 					e.printStackTrace();
 					return;
 				}

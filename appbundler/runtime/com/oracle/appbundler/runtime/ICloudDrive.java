@@ -2,9 +2,9 @@ package com.oracle.appbundler.runtime;
 
 public class ICloudDrive
 {
-	private static native String jni_getPath();
+	private static native String jniGetPath();
 
 	public static String getPath() {
-		return jni_getPath();
+		return jniGetPath();
 	}
 }
