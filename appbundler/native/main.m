@@ -83,9 +83,22 @@ static char** progargv = NULL;
 static int progargc = 0;
 static int launchCount = 0;
 
-static dispatch_queue_t iCloudDriveMonitoringQueue = NULL;
-static NSString *iCloudDriveSymlinkURL = nil;
+/** If this app supports iCloud Drive, the path to its ubiquity container will be written
+ ** to a file so the Java app can read it back. The full path to this file is given in the
+ ** `iCloudDriveInfoFile` argument. (By default it is named `iCloudDrive` and placed in the
+ ** app's Application Support directory.)
+
+ ** The file is UTF8 encoded, and contains only the path and nothing else. If the user logs
+ ** out of iCloud, the file will be removed; if they log back in, it will be rewritten
+ ** atomically.
+
+ ** It can take some time for the ubiquity container URL to be resolved, so this file may not
+ ** be available immediately on app launch; it is recommended to check for and read this file
+ ** before accessing the container to be sure that the app has the up-to-date path.
+ */
+static NSURL *iCloudDriveInfoFileURL = nil;
 static id iCloudDriveIdentityToken = nil;
+static dispatch_queue_t iCloudDriveMonitoringQueue = NULL;
 
 const char * tmpFile();
 int launch(char *, int, char **);
@@ -99,7 +112,7 @@ NSString * addDirectoryToSystemArguments(NSUInteger, NSSearchPathDomainMask, NSS
 void addModifierFlagToSystemArguments(NSEventModifierFlags, NSString *, NSEventModifierFlags, NSMutableArray *);
 static void Log(NSString *format, ...);
 static void NSPrint(NSString *format, va_list args);
-static void updateiCloudSymlink(void);
+static void updateiCloudDriveInfoFile(void);
 
 int main(int argc, char *argv[]) {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -515,34 +528,36 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         }
     }
 
-	// Ubiquity container (iCloud) symlink.
+	// Ubiquity container (iCloud) info file.
 	{
 	    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES);
 	    if ([paths count] > 0) {
 			// TODO: this should maybe be a parameter?
-			NSString *symlinkName = @"iCloudDrive";
+			NSString *infoFileName = @"iCloudDrive";
 	        NSString *basePath = [paths objectAtIndex:0];
 			NSURL *baseURL = [NSURL fileURLWithPath:basePath];
-			iCloudDriveSymlinkURL = [baseURL URLByAppendingPathComponent:symlinkName isDirectory:NO];
+			iCloudDriveInfoFileURL = [baseURL URLByAppendingPathComponent:infoFileName isDirectory:NO];
 		}
 
-		if (iCloudDriveSymlinkURL) {
-			NSString *path = [iCloudDriveSymlinkURL path];
-			NSString *arg = [NSString stringWithFormat:@"-D%@=%@", @"iCloudDriveSymlink", path];
+		if (iCloudDriveInfoFileURL) {
+			NSString *path = [iCloudDriveInfoFileURL path];
+			NSString *arg = [NSString stringWithFormat:@"-D%@=%@", @"iCloudDriveInfoFile", path];
 			[systemArguments addObject:arg];
 
 			iCloudDriveMonitoringQueue = dispatch_queue_create("iCloudDriveMonitoring", DISPATCH_QUEUE_SERIAL);
 			// We don't ever release this queue or remove this observer, because we want the monitoring
 			// to continue until the application exits.
 			dispatch_async(iCloudDriveMonitoringQueue, ^{
-				updateiCloudSymlink();
+				updateiCloudDriveInfoFile();
 			});
 			[[NSNotificationCenter defaultCenter]
 				addObserverForName:NSUbiquityIdentityDidChangeNotification
 				object:nil
-				queue:iCloudDriveMonitoringQueue
-				usingBlock:^{
-					updateiCloudSymlink();
+				queue:nil
+				usingBlock:^(NSNotification *notification) {
+					dispatch_async(iCloudDriveMonitoringQueue, ^{
+						updateiCloudDriveInfoFile();
+					});
 				}];
 		}
 	}
@@ -1052,41 +1067,34 @@ static void NSPrint(NSString *format, va_list args)
 #endif
 }
 
-static void updateiCloudSymlink(NSString *symlinkURL) {
-	NSURL *iCloudDriveURL = nil;
+static void updateiCloudDriveInfoFile() {
+	if (! iCloudDriveInfoFileURL) return;
 	NSFileManager *manager = [[NSFileManager alloc] init];
 	id newToken = [manager ubiquityIdentityToken];
 	if ([iCloudDriveIdentityToken isEqual:newToken]) return;
 	iCloudDriveIdentityToken = newToken;
 
-	// This call can take significant time, so don't call updateiCloudSymlink() on the main thread.
+	// This call can take significant time, so don't call updateiCloudDriveInfoFile() on the main thread.
 	// TODO: This'll just use the first container in the entitlements; container id could be a setting?
-	iCloudDriveURL = [manager URLForUbiquityContainerIdentifier:nil];
+	NSURL *iCloudDriveURL = [manager URLForUbiquityContainerIdentifier:nil];
 	if (iCloudDriveURL) {
+		NSString *iCloudDrivePath = [iCloudDriveURL path];
 		NSError *error = nil;
-		NSURL *temporaryDirectoryURL = [manager
-			URLForDirectory:NSItemReplacementDirectory
-			inDomain:NSUserDomainMask
-			appropriateForURL:iCloudDriveSymlinkURL
-			create:YES
+		BOOL success = [iCloudDrivePath
+			writeToURL:iCloudDriveInfoFileURL
+			atomically:YES
+			encoding:NSUTF8StringEncoding
 			error:&error];
-		if (! temporaryDirectoryURL) {
+		if (! success) {
 			// TODO: could log the error here.
 			return;
 		}
-		NSURL *temporarySymlinkURL = [temporaryDirectoryURL
-			URLByAppendingPathComponent:[iCloudDriveSymlinkURL lastPathComponent]
-			isDirectory:NO];
-		char *temporarySymlinkPath = [[temporarySymlinkURL path] UTF8String];
-		char *iCloudDriveSymlinkPath = [[iCloudDriveSymlinkURL path] UTF8String];
-		char *iCloudDrivePath = [[iCloudDriveURL path] UTF8String];
-		// TODO: check return values and errno.
-		unlink(temporarySymlinkPath); // Ignore if this fails due to ENOENT
-		symlink(iCloudDrivePath, temporarySymlinkPath);
-		rename(temporarySymlinkPath, iCloudDriveSymlinkPath);
 	} else {
-		char *iCloudDriveSymlinkPath = [[iCloudDriveSymlinkURL path] UTF8String];
-		// TODO: check return values and errno.
-		unlink(temporarySymlinkPath); // Ignore if this fails due to ENOENT
+		NSError *error = nil;
+		BOOL success = [manager removeItemAtURL:iCloudDriveInfoFileURL error:&error];
+		if (! success) {
+			// TODO: check error domain and code; ignore if it's NSCocoaErrorDomain and NSFileNoSuchFileError,
+			// 		 because it's okay if the file simply never existed in the first place.
+		}
 	}
 }
