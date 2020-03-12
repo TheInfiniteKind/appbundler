@@ -100,6 +100,7 @@ static NSLock *iCloudDriveURLLock = nil;
 static NSURL *iCloudDriveURL = nil;
 static id iCloudDriveIdentityToken = nil;
 static dispatch_queue_t iCloudDriveMonitoringQueue = NULL;
+static id iCloudDriveObserver = nil;
 
 const char * tmpFile();
 int launch(char *, int, char **);
@@ -530,9 +531,10 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     }
 
 	// Ubiquity container (iCloud) info file.
-	{
+	if (launchCount == 0) {
 		iCloudDriveURLLock = [NSLock new];
 
+		// FIXME: decide if we want to set any arguments at all!
 		// iCloudDriveIdentityToken = [manager ubiquityIdentityToken];
 		// BOOL iCloudAvailable = (iCloudDriveIdentityToken == nil);
 		//
@@ -548,7 +550,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
 		dispatch_async(iCloudDriveMonitoringQueue, ^{
 			updateiCloudDriveInfo();
 		});
-		[[NSNotificationCenter defaultCenter]
+		iCloudDriveObserver = [[NSNotificationCenter defaultCenter]
 			addObserverForName:NSUbiquityIdentityDidChangeNotification
 			object:nil
 			queue:nil
@@ -1073,8 +1075,7 @@ static void updateiCloudDriveInfo() {
 	if (iCloudDriveIdentityToken) {
 		// This call can take significant time, so don't call updateiCloudDriveInfo() on the main thread.
 		// TODO: This'll just use the first container in the entitlements; container id could be a setting?
-		NSURL *url = [manager URLForUbiquityContainerIdentifier:nil];
-
+		NSURL *url = [[manager URLForUbiquityContainerIdentifier:nil] copy];
 		[iCloudDriveURLLock lock];
 		iCloudDriveURL = url;
 		[iCloudDriveURLLock unlock];

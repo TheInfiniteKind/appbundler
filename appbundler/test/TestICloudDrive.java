@@ -1,17 +1,18 @@
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.NoSuchFileException;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import java.util.Objects;
 import com.oracle.appbundler.runtime.ICloudDrive;
 
 import java.lang.reflect.*;
 
 public class TestICloudDrive {
 	public static class ICloudDriveChecker implements Runnable {
+		static String previousPath = "///force first-time difference///";
+
 	    @Override
 	    public void run() {
+
 			System.loadLibrary("ICloudDriveNative");
 
 			while (true) {
@@ -29,11 +30,14 @@ public class TestICloudDrive {
 					return;
 				}
 
-				if (path == null) {
-					System.out.println("not logged in, or iCloud Drive is unavailable!");
-				} else {
-					System.out.println("iCloud Drive path: " + path);
+				if (!Objects.equals(previousPath, path)) {
+					if (path == null) {
+						System.out.println("iCloud Drive: not logged in, or iCloud Drive is unavailable!");
+					} else {
+						System.out.println("iCloud Drive: path = " + path);
+					}
 				}
+				previousPath = path;
 			}
 	    }
 	}

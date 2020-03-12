@@ -100,6 +100,9 @@ questions.
 
         <exec executable="${cc}" failonerror="true">
             <arg line="${arch64}"/>
+			<arg value="-Wall"/>
+			<arg value="-Wno-unused-variable"/>
+			<arg value="-Werror"/>
             <arg value="-I"/>
             <arg value="${javahome}/include"/>
             <arg value="-I"/>
