@@ -96,11 +96,11 @@ static int launchCount = 0;
  ** be available immediately on app launch; it is recommended to check for and read this file
  ** before accessing the container to be sure that the app has the up-to-date path.
  */
-static NSLock *iCloudDriveURLLock = nil;
-static NSURL *iCloudDriveURL = nil;
+static /* application lifetime */ NSLock *iCloudDriveURLLock = nil;
+static /* application lifetime */ dispatch_queue_t iCloudDriveMonitoringQueue = NULL;
+static /* application lifetime */ id iCloudDriveObserver = nil;
 static id iCloudDriveIdentityToken = nil;
-static dispatch_queue_t iCloudDriveMonitoringQueue = NULL;
-static id iCloudDriveObserver = nil;
+static NSURL *iCloudDriveURL = nil;
 
 const char * tmpFile();
 int launch(char *, int, char **);
@@ -532,6 +532,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
 
 	// Ubiquity container (iCloud) info file.
 	if (launchCount == 0) {
+		// NOTE: This lock should live for the application's lifetime, so is never released.
 		iCloudDriveURLLock = [NSLock new];
 
 		// FIXME: decide if we want to set any arguments at all!
@@ -544,12 +545,12 @@ int launch(char *commandName, int progargc, char *progargv[]) {
 		// arg = [NSString stringWithFormat:@"-D%@=", @"iCloudDrivePath"];
 		// [systemArguments addObject:arg];
 
-		// We don't ever release this queue or remove this observer, because we want the monitoring
-		// to continue until the application exits.
+		// NOTE: This queue should live for the application's lifetime, so is never released.
 		iCloudDriveMonitoringQueue = dispatch_queue_create("iCloudDriveMonitoring", DISPATCH_QUEUE_SERIAL);
 		dispatch_async(iCloudDriveMonitoringQueue, ^{
 			updateiCloudDriveInfo();
 		});
+		// NOTE: This observer should live for the application's lifetime, so is never removed or released.
 		iCloudDriveObserver = [[NSNotificationCenter defaultCenter]
 			addObserverForName:NSUbiquityIdentityDidChangeNotification
 			object:nil
@@ -559,6 +560,9 @@ int launch(char *commandName, int progargc, char *progargv[]) {
 					updateiCloudDriveInfo();
 				});
 			}];
+#if !__has_feature(objc_arc)
+		[iCloudDriveObserver retain];
+#endif
 	}
 
     //Sandbox
@@ -1067,23 +1071,34 @@ static void NSPrint(NSString *format, va_list args)
 }
 
 static void updateiCloudDriveInfo() {
-	NSFileManager *manager = [[NSFileManager alloc] init];
+	NSFileManager *manager = [NSFileManager new];
 	id newToken = [manager ubiquityIdentityToken];
 	if ([iCloudDriveIdentityToken isEqual:newToken]) return;
-	iCloudDriveIdentityToken = newToken;	
 
+#if !__has_feature(objc_arc)
+	[iCloudDriveIdentityToken release];
+#endif
+	iCloudDriveIdentityToken = [newToken copy];
+
+	NSURL *url;
 	if (iCloudDriveIdentityToken) {
 		// This call can take significant time, so don't call updateiCloudDriveInfo() on the main thread.
 		// TODO: This'll just use the first container in the entitlements; container id could be a setting?
-		NSURL *url = [[manager URLForUbiquityContainerIdentifier:nil] copy];
-		[iCloudDriveURLLock lock];
-		iCloudDriveURL = url;
-		[iCloudDriveURLLock unlock];
+		url = [manager URLForUbiquityContainerIdentifier:nil];
 	} else {
-		[iCloudDriveURLLock lock];
-		iCloudDriveURL = nil;
-		[iCloudDriveURLLock unlock];
+		url = nil;
 	}
+
+	[iCloudDriveURLLock lock];
+#if !__has_feature(objc_arc)
+	[iCloudDriveURL release];
+#endif
+	iCloudDriveURL = [url copy];
+	[iCloudDriveURLLock unlock];
+
+#if !__has_feature(objc_arc)
+	[manager release];
+#endif
 }
 
 JNIEXPORT jint JNICALL JNI_OnLoad_ICloudDriveNative(JavaVM *vm, void *reserved) {
@@ -1094,12 +1109,18 @@ JNIEXPORT jint JNICALL JNI_OnLoad_ICloudDriveNative(JavaVM *vm, void *reserved) 
 JNIEXPORT jstring JNICALL Java_com_oracle_appbundler_runtime_ICloudDrive_jniGetPath(JNIEnv *env, jclass cls) {
 	NSURL *url;
 	[iCloudDriveURLLock lock];
-	url = iCloudDriveURL;
+	url = [iCloudDriveURL copy];
 	[iCloudDriveURLLock unlock];
 
+	jstring retval;
 	if (url) {
-		return (*env)->NewStringUTF(env, [[url path] UTF8String]);
+		retval = (*env)->NewStringUTF(env, [[url path] UTF8String]);
 	} else {
-		return NULL;
+		retval = NULL;
 	}
+#if !__has_feature(objc_arc)
+	[url release];
+#endif
+
+	return retval;
 }
