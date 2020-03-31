@@ -52,7 +52,7 @@ These are the system properties passed to the JVM:
 - `LaunchModifierFlags` (an Integer)
 
 
-For more details, please refer to the [task documentation](http://htmlpreview.github.io/?https://bitbucket.org/infinitekind/appbundler/raw/tip/appbundler/doc/appbundler.html).
+For more details, please refer to the [task documentation](http://htmlpreview.github.io/?https://github.com/TheInfiniteKind/appbundler/blob/master/appbundler/doc/appbundler.html).
 
 Example 1:
 
