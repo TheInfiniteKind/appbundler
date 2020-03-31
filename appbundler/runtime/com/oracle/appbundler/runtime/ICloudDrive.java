@@ -5,6 +5,6 @@ public class ICloudDrive
 	private static native String jniGetPath();
 
 	public static String getPath() {
-		return jniGetPath();
+        return jniGetPath();
 	}
 }

@@ -102,6 +102,10 @@ static /* application lifetime */ id iCloudDriveObserver = nil;
 static id iCloudDriveIdentityToken = nil;
 static NSURL *iCloudDriveURL = nil;
 
+static JavaVM *iCloudDrive_VM = NULL;
+static jobject iCloudDrive_callback_obj = NULL;
+static jmethodID iCloudDrive_callback_method = NULL;
+
 const char * tmpFile();
 int launch(char *, int, char **);
 
@@ -1070,6 +1074,21 @@ static void NSPrint(NSString *format, va_list args)
 #endif
 }
 
+static void notifyJavaICloudDrivePathChanged(const char *path) {
+	if (iCloudDrive_VM == NULL) return;
+	JNIEnv *env;
+	AttachCurrentThread
+	jint result = AttachCurrentThread(iCloudDrive_VM, &env, NULL);
+	if (result != JNI_OK) {
+		fprintf(stderr, "%s: Failed to attach thread to jvm.\n", __FUNC__);
+		return;
+	}
+	
+	... call the callback
+
+	DetachCurrentThread(iCloudDrive_VM);
+}
+
 static void updateiCloudDriveInfo() {
 	NSFileManager *manager = [NSFileManager new];
 	id newToken = [manager ubiquityIdentityToken];
@@ -1089,28 +1108,86 @@ static void updateiCloudDriveInfo() {
 		url = nil;
 	}
 
+	printf("*** updateiCloudDriveInfo: thread is %p (main thread is %p)\n", [NSThread currentThread], [NSThread mainThread]);
+	printf("*** updateiCloudDriveInfo: acquiring lock\n");
 	[iCloudDriveURLLock lock];
+	printf("*** updateiCloudDriveInfo: lock acquired\n");
 #if !__has_feature(objc_arc)
 	[iCloudDriveURL release];
 #endif
 	iCloudDriveURL = [url copy];
 	[iCloudDriveURLLock unlock];
+	printf("*** updateiCloudDriveInfo: lock released\n");
 
 #if !__has_feature(objc_arc)
 	[manager release];
 #endif
+
+	notifyJavaICloudDrivePathChanged([[url path] UTF8String]);
 }
 
 JNIEXPORT jint JNICALL JNI_OnLoad_ICloudDriveNative(JavaVM *vm, void *reserved) {
 	// We need this function for System.LoadLibrary("ICloudDriveNative") to succeed.
+	iCloudDrive_VM = vm;
+
+	// FIXME: is this valid to call now, or do we need another jni function for the java side to call
+	// 		  to set things up?
+	JNIEnv *env;
+	jint result = iCloudDrive_VM->GetEnv(iCloudDrive_VM, &env, JNI_VERSION_1_8);
+	assert(result == JNI_OK);
+	if (result == JNI_OK) {
+		jclass cls = env->FindClass(env, "com/oracle/appbundler/runtime/ICloudDrive");
+		assert(cls != NULL);
+		jmethodID mid = env->GetStaticMethodID(env, cls, "iCloudDrivePathDidChange", "(Ljava/lang/String;)V");
+		assert(mid != NULL);
+		iCloudDrive_callback_method = mid;
+		
+		// FIXME: we should .... make this all work, somehow!
+		env->CallStaticVoidMethod
+	}
+	
 	return JNI_VERSION_1_8;
+}
+
+JNIEXPORT jvoid JNICALL Java_com_oracle_appbundler_runtime_ICloudDrive_jniRegister(JNIEnv *env, jclass cls) {
+	// static JavaVM *iCloudDrive_VM = NULL;
+	// static jobject iCloudDrive_callback_obj = NULL;
+	// static jmethodID iCloudDrive_callback_method = NULL;
+
+	// FIXME: this is only valid if the object conforms to a required interface with the method we need--
+	// 		  but we'll enforce that on the java side.
+
+	// GetStaticMethodID instead of GetMethodID.
+	// Note, you will need to call CallStaticVoidMethod
+
+
+	jobject global_obj = (*env)->NewGlobalRef(obj);
+
+	// FIXME: so, what if obj is null??
+
+	jclass cls = env->GetObjectClass(obj);
+	jmethodID mid = env->GetMethodID(cls, "callback", "(Ljava/lang/String;)V");
+
+	// FIXME: make sure all this uses another lock for changing (and above, calling) the registered object.
+	if (iCloudDrive_callback_obj != NULL) {
+		(*env)->DeleteGlobalRef(env, iCloudDrive_callback_obj);
+	}
+	iCloudDrive_callback_obj = global_obj;
+	iCloudDrive_callback_method = mid;
 }
 
 JNIEXPORT jstring JNICALL Java_com_oracle_appbundler_runtime_ICloudDrive_jniGetPath(JNIEnv *env, jclass cls) {
 	NSURL *url;
+	// FIXME: maybe this should dispatch_sync back to our queue??? Although that definitely could cause
+	//        issues if the updater tries to call back into java. And anyway, this shouldn't have problems,
+	//        should it??
+	printf("*** jniGetPath: thread is %p (main thread is %p)\n", [NSThread currentThread], [NSThread mainThread]);
+	printf("*** jniGetPath: acquiring lock\n");
 	[iCloudDriveURLLock lock];
+	printf("*** jniGetPath: lock acquired\n");
 	url = [iCloudDriveURL copy];
 	[iCloudDriveURLLock unlock];
+	printf("*** jniGetPath: lock released\n");
 
 	jstring retval;
 	if (url) {
