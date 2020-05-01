@@ -165,7 +165,6 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         workingDir = [workingDir stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
     } else {
         workingDir = [[NSFileManager defaultManager] currentDirectoryPath];
-        workingDir = NSHomeDirectory(); // REVIEW: Check which if these ones is realy the users home directory ...
     }
     Log(@"Working Directory: '%@'", convertRelativeFilePath(workingDir));
 
