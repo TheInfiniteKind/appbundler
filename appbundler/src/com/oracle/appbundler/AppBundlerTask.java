@@ -834,7 +834,7 @@ public class AppBundlerTask extends Task {
     private void writeProperty(XMLStreamWriter xout, String key, Boolean value, int indentationDepth) throws XMLStreamException {
         if (value != null && value) {
             writeKey(xout, key, indentationDepth);
-            writeBoolean(xout, true, indentationDepth);
+            writeBoolean(xout, value, indentationDepth);
         }
     }
 
