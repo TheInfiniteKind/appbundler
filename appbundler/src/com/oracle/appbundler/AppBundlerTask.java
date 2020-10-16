@@ -80,6 +80,7 @@ public class AppBundlerTask extends Task {
     private String workingDirectory = null;
     private String minimumSystemVersion = "10.7";
 
+    private boolean requiresAquaAppearance = false;
     private String jvmRequired = null;
     private boolean jrePreferred = false;
     private boolean jdkPreferred = false;
@@ -644,6 +645,8 @@ public class AppBundlerTask extends Task {
             writeProperty(xout, "NSSupportsAutomaticGraphicsSwitching", supportsAutomaticGraphicsSwitching, 2);
             writeProperty(xout, "IgnorePSN", ignorePSN, 2);
 
+            writeProperty(xout, "NSRequiresAquaSystemAppearance", requiresAquaAppearance, 2);
+            
             if(registeredProtocols.size() > 0){
                 writeKey(xout, "CFBundleURLTypes", 2);
                 writeIndentation(xout, 2);
