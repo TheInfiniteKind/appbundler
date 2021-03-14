@@ -139,7 +139,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
 
     // check args for `--verbose`
     for (int i = 0; i < progargc; i++) {
-        if (strcmp(progargv[i], "--verbose")) {
+        if (strcmp(progargv[i], "--verbose") == 0) {
             isVerbose = true;
         }
     }
