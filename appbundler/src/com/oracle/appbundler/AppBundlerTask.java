@@ -396,12 +396,8 @@ public class AppBundlerTask extends Task {
             throw new IllegalStateException("Short version is required.");
         }
 
-        if (signature == null) {
-            throw new IllegalStateException("Signature is required.");
-        }
-
-        if (signature.length() != 4) {
-            throw new IllegalStateException("Invalid signature.");
+        if (signature == null || signature.trim().length() != 4) {
+            throw new IllegalStateException("Invalid or missing signature.");
         }
 
         if (copyright == null) {
