@@ -139,7 +139,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
 
     // check args for `--verbose`
     for (int i = 0; i < progargc; i++) {
-        if (strcmp(progargv[i], "--verbose")) {
+        if (strcmp(progargv[i], "--verbose") == 0) {
             isVerbose = true;
         }
     }
@@ -163,13 +163,11 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     NSString *workingDir = [infoDictionary objectForKey:@WORKING_DIR];
     if (workingDir != nil) {
         workingDir = [workingDir stringByReplacingOccurrencesOfString:@APP_ROOT_PREFIX withString:[mainBundle bundlePath]];
-    } else {
-        workingDir = [[NSFileManager defaultManager] currentDirectoryPath];
-        workingDir = NSHomeDirectory(); // REVIEW: Check which if these ones is realy the users home directory ...
-    }
-    Log(@"Working Directory: '%@'", convertRelativeFilePath(workingDir));
 
-    chdir([workingDir UTF8String]);
+        Log(@"Working Directory: '%@'", convertRelativeFilePath(workingDir));
+
+        chdir([workingDir UTF8String]);
+    }
 
     // execute privileged
     NSString *privileged = [infoDictionary objectForKey:@JVM_RUN_PRIVILEGED];
