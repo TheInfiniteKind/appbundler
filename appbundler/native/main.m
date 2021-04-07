@@ -356,6 +356,11 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         }
         defaultOptions = [defaults allValues];
     }
+    
+    // Set the AppleWindowTabbingMode to not squash all new JFrames into tabs within
+    // a single window when the user has set SystemPrefs:General:PreferTabs:always-when-opening-documents
+    // which is unfortunately the default in macOS 11
+    [[NSUserDefaults standardUserDefaults] setValue:@"manual" forKey:@"AppleWindowTabbingMode"];
 
     // Get the application arguments
     NSMutableArray *arguments = [[infoDictionary objectForKey:@JVM_ARGUMENTS_KEY] mutableCopy];
