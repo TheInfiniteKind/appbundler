@@ -126,6 +126,13 @@ questions.
     <td align="center" valign="top">No</td>
   </tr>  
   <tr>
+    <td valign="top">plistModulePaths</td>
+    <td valign="top">A comma-separated list of modulepath-elements which are used for the java application.
+    <tt>$APP_ROOT</tt> is replaced by the path of the <tt>.app</tt>-bundle. Only applicable if <tt>mainclassname</tt>
+    references a modular class. By default uses all of the libraries added to the bundle using <tt>modulepath</tt>.</td>
+    <td align="center" valign="top">No</td>
+  </tr>  
+  <tr>
     <td valign="top">jvmRequired</td>
     <td valign="top">Specifies the required Java virtual machine version.</td>
     <td align="center" valign="top">No (defaults to <tt>1.7</tt>)</td>
@@ -212,6 +219,11 @@ bundle, and target systems must have a shared JRE installed in
 <p>A <a href="http://ant.apache.org/manual/Types/fileset.html">fileset</a> representing the class
 path of the bundled application. Corresponds to the <tt>java.class.path</tt> system property.
 Entries will be copied to the <tt>Contents/Java/</tt> folder of the generated bundle.</p>
+
+<h4>modulepath</h4>
+<p>A <a href="http://ant.apache.org/manual/Types/fileset.html">fileset</a> representing the module
+path of the bundled application. Entries will be copied to the <tt>Contents/Java/</tt> folder of
+the generated bundle, which will be added to the module path using <tt>--module-path</tt>.</p>
 
 <h4>librarypath</h4>
 <p>A <a href="http://ant.apache.org/manual/Types/fileset.html">fileset</a> representing the library

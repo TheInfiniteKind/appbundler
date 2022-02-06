@@ -100,6 +100,7 @@ public class AppBundlerTask extends Task {
     private Runtime runtime = null;
     private JLink jlink = null;
     private ArrayList<FileSet> classPath = new ArrayList<>();
+    private ArrayList<FileSet> modulePath = new ArrayList<>();
     private ArrayList<FileSet> libraryPath = new ArrayList<>();
     private ArrayList<Option> options = new ArrayList<>();
     private ArrayList<String> arguments = new ArrayList<>();
@@ -113,6 +114,7 @@ public class AppBundlerTask extends Task {
 
     private Reference classPathRef;
     private ArrayList<String> plistClassPaths = new ArrayList<>();
+    private ArrayList<String> plistModulePaths = new ArrayList<>();
 
     private static final String EXECUTABLE_NAME = "JavaAppLauncher";
     private static final String DEFAULT_ICON_NAME = "GenericApp.icns";
@@ -264,8 +266,18 @@ public class AppBundlerTask extends Task {
         }
     }
 
+    public void setPlistModulePaths(String plistModulePaths) {
+        for (String tok : plistModulePaths.split("\\s*,\\s*")) {
+            this.plistModulePaths.add(tok);
+        }
+    }
+
     public void addConfiguredClassPath(FileSet classPath) {
         this.classPath.add(classPath);
+    }
+
+    public void addConfiguredModulePath(FileSet modulePath) {
+        this.modulePath.add(modulePath);
     }
 
     public void addConfiguredLibraryPath(FileSet libraryPath) {
@@ -457,6 +469,9 @@ public class AppBundlerTask extends Task {
             // Copy class path entries to Java folder
             copyClassPathEntries(javaDirectory);
 
+            // Copy module path entries to Java folder
+            copyModulePathEntries(javaDirectory);
+
             // Copy class path ref entries to Java folder
             copyClassPathRefEntries(javaDirectory);
 
@@ -539,7 +554,15 @@ public class AppBundlerTask extends Task {
     }
 
     private void copyClassPathEntries(File javaDirectory) throws IOException {
-        for (FileSet fileSet : classPath) {
+        copyJavaDirectoryEntries(classPath, javaDirectory);
+    }
+
+    private void copyModulePathEntries(File javaDirectory) throws IOException {
+        copyJavaDirectoryEntries(modulePath, javaDirectory);
+    }
+
+    private void copyJavaDirectoryEntries(Collection<FileSet> fileSets, File javaDirectory) throws IOException {
+        for (FileSet fileSet : fileSets) {
             File classPathDirectory = fileSet.getDir();
             DirectoryScanner directoryScanner = fileSet.getDirectoryScanner(getProject());
             String[] includedFiles = directoryScanner.getIncludedFiles();
@@ -687,9 +710,14 @@ public class AppBundlerTask extends Task {
             // Write main class name - only if set. There should only one be set
             writeProperty(xout, "JVMMainClassName", mainClassName, 2);
 
-           // Write classpaths in plist, if specified
+            // Write classpaths in plist, if specified
             if (!plistClassPaths.isEmpty()) {
                 writeStringArray(xout,"JVMClassPath", plistClassPaths, 2);
+            }
+
+            // Write modulepath in plist, if specified
+            if (!plistModulePaths.isEmpty()) {
+                writeStringArray(xout,"JVMModulePath", plistModulePaths, 2);
             }
 
             // Write whether launcher be verbose with debug msgs
