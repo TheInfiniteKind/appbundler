@@ -741,7 +741,9 @@ public class AppBundlerTask extends Task {
             }
 
             // Write architectures
-            writeStringArray(xout, "LSArchitecturePriority", architectures, 2);
+            if (!architectures.isEmpty()) {
+                writeStringArray(xout, "LSArchitecturePriority", architectures, 2);
+            }
 
             // Write Environment
             writeKey(xout, "LSEnvironment", 2);
