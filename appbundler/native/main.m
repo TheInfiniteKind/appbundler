@@ -629,7 +629,8 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     if (runningModule)
         argc++;
 
-    char *argv[argc];
+    char *argv[argc + 1];
+    argv[argc] = NULL; /* Launch_JLI can crash if the argv array is not null-terminated: 9074879 */
 
     int i = 0;
     argv[i++] = commandName;
