@@ -87,9 +87,9 @@ static int launchCount = 0;
 const char * tmpFile();
 int launch(char *, int, char **);
 
-NSString * findJava (NSString *, bool, bool, bool, bool);
-NSString * findJRE (int, bool, bool);
-NSString * findJDK (int, bool, bool);
+NSString * findJava (NSString *, bool, bool, bool);
+NSString * findJRE (int, bool);
+NSString * findJDK (int, bool);
 int extractMajorVersion (NSString *);
 NSString * convertRelativeFilePath(NSString *);
 NSString * addDirectoryToSystemArguments(NSUInteger, NSSearchPathDomainMask, NSString *, NSMutableArray *);
@@ -241,7 +241,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     }
     else {
         // Search for the runtimePath, then make it a libjli.dylib path.
-        runtimePath = findJava (jvmRequired, jrePreferred, jdkPreferred, isDebugging, exactVersionMatch);
+        runtimePath = findJava (jvmRequired, jrePreferred, jdkPreferred, exactVersionMatch);
         NSFileManager *fm = [[NSFileManager alloc] init];
         for (id dylibRelPath in @[@"jre/lib/jli", @"jre/lib", @"lib/jli", @"lib"]) {
             NSString *candidate = [[runtimePath stringByAppendingPathComponent:dylibRelPath] stringByAppendingPathComponent:@LIBJLI_DY_LIB];
@@ -731,7 +731,6 @@ NSString * findJava (
                      NSString *jvmRequired,
                      bool jrePreferred,
                      bool jdkPreferred,
-                     bool isDebugging,
                      bool exactMatch)
 {
     Log(@"Searching for a JRE.");
@@ -750,7 +749,7 @@ NSString * findJava (
         Log(@"A JDK is preferred; will not search for a JRE.");
     }
     else {
-        NSString * javaHome = findJRE (required, isDebugging, exactMatch);
+        NSString * javaHome = findJRE (required, exactMatch);
 
         if (javaHome != nil) { return javaHome; }
 
@@ -763,7 +762,7 @@ NSString * findJava (
         Log(@"A JRE is preferred; will not search for a JDK.");
     }
     else {
-        NSString * javaHome = findJDK (required, isDebugging, exactMatch);
+        NSString * javaHome = findJDK (required, exactMatch);
 
         if (javaHome != nil) { return javaHome; }
 
@@ -780,7 +779,6 @@ NSString * findJava (
  */
 NSString * findJRE (
                     int jvmRequired,
-                    bool isDebugging,
                     bool exactMatch)
 {
     // Try the "java -version" shell command and see if we get a response and
@@ -859,7 +857,6 @@ NSString * findJRE (
  */
 NSString * findJDK (
                     int jvmRequired,
-                    bool isDebugging,
                     bool exactMatch)
 {
     @try
