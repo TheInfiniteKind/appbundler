@@ -242,18 +242,20 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     else {
         // Search for the runtimePath, then make it a libjli.dylib path.
         runtimePath = findJava (jvmRequired, jrePreferred, jdkPreferred, exactVersionMatch);
-        NSFileManager *fm = [[NSFileManager alloc] init];
-        for (id dylibRelPath in @[@"jre/lib/jli", @"jre/lib", @"lib/jli", @"lib"]) {
-            NSString *candidate = [[runtimePath stringByAppendingPathComponent:dylibRelPath] stringByAppendingPathComponent:@LIBJLI_DY_LIB];
-            BOOL isDir;
-            BOOL javaDylibFileExists = [fm fileExistsAtPath:candidate isDirectory:&isDir];
-            if (javaDylibFileExists && !isDir) {
-                javaDylib = candidate;
-                break;
+        if (runtimePath != nil) {
+            NSFileManager *fm = [[NSFileManager alloc] init];
+            for (id dylibRelPath in @[@"jre/lib/jli", @"jre/lib", @"lib/jli", @"lib"]) {
+                NSString *candidate = [[runtimePath stringByAppendingPathComponent:dylibRelPath] stringByAppendingPathComponent:@LIBJLI_DY_LIB];
+                BOOL isDir;
+                BOOL javaDylibFileExists = [fm fileExistsAtPath:candidate isDirectory:&isDir];
+                if (javaDylibFileExists && !isDir) {
+                    javaDylib = candidate;
+                    break;
+                }
             }
-        }
 
-        Log(@"Java Runtime Dylib Path: '%@'", convertRelativeFilePath(javaDylib));
+            Log(@"Java Runtime Dylib Path: '%@'", convertRelativeFilePath(javaDylib));
+        }
     }
 
     const char *libjliPath = NULL;
