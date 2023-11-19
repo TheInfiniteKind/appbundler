@@ -87,9 +87,9 @@ static int launchCount = 0;
 const char * tmpFile();
 int launch(char *, int, char **);
 
-NSString * findJavaDylib (NSString *, bool, bool, bool, bool);
-NSString * findJREDylib (int, bool, bool);
-NSString * findJDKDylib (int, bool, bool);
+NSString * findJava (NSString *, bool, bool, bool, bool);
+NSString * findJRE (int, bool, bool);
+NSString * findJDK (int, bool, bool);
 int extractMajorVersion (NSString *);
 NSString * convertRelativeFilePath(NSString *);
 NSString * addDirectoryToSystemArguments(NSUInteger, NSSearchPathDomainMask, NSString *, NSMutableArray *);
@@ -241,7 +241,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     }
     else {
         // Search for the runtimePath, then make it a libjli.dylib path.
-        runtimePath = findJavaDylib (jvmRequired, jrePreferred, jdkPreferred, isDebugging, exactVersionMatch);
+        runtimePath = findJava (jvmRequired, jrePreferred, jdkPreferred, isDebugging, exactVersionMatch);
         NSFileManager *fm = [[NSFileManager alloc] init];
         for (id dylibRelPath in @[@"jre/lib/jli", @"jre/lib", @"lib/jli", @"lib"]) {
             NSString *candidate = [[runtimePath stringByAppendingPathComponent:dylibRelPath] stringByAppendingPathComponent:@LIBJLI_DY_LIB];
@@ -358,7 +358,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         }
         defaultOptions = [defaults allValues];
     }
-    
+
     // Set the AppleWindowTabbingMode to not squash all new JFrames into tabs within
     // a single window when the user has set SystemPrefs:General:PreferTabs:always-when-opening-documents
     // which is unfortunately the default in macOS 11
@@ -378,7 +378,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     NSString *mainClassName = [infoDictionary objectForKey:@JVM_MAIN_CLASS_NAME_KEY];
 
     bool runningModule = [mainClassName rangeOfString:@"/"].location != NSNotFound;
-    
+
     if ( jnlplauncher != nil ) {
 
         const_appclasspath = [[runtimePath stringByAppendingPathComponent:@DEPLOY_LIB] fileSystemRepresentation];
@@ -427,7 +427,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
 
         // Add the jnlp as argument so that javaws.Main can read and delete it
         [arguments addObject:tempFileName];
-        
+
     } else {
         // It is impossible to combine modules and jar launcher
         if ( runningModule && jarlauncher != nil ) {
@@ -443,7 +443,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
                 userInfo:nil] raise];
         }
     }
-    
+
     Log(@"Main Class Name: '%@'", mainClassName);
 
     // If a jar file is defined as launcher, disacard the javaPath
@@ -605,7 +605,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
             setenv([key UTF8String], [newValue UTF8String], 1);
         }
     }
-    
+
     // replace any maximum memory parameters that specify a percentage of available ram
     for(int i=0; i<options.count; i++) {
         NSString* option = [options objectAtIndex:i];
@@ -622,7 +622,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
             }
         }
     }
-    
+
     // Initialize the arguments to JLI_Launch()
     // +5 due to the special directories and the sandbox enabled property
     int argc = 1 + [systemArguments count] + [options count] + [defaultOptions count] + 1 + [arguments count] + newProgargc;
@@ -722,17 +722,17 @@ const char * tmpFile() {
 }
 
 /**
- *  Searches for a JRE or JDK dylib of the specified version or later.
+ *  Searches for a JRE or JDK of the specified version or later.
  *  First checks the "usual" JRE location, and failing that looks for a JDK.
  *  The version required should be a string of form "1.X". If no version is
  *  specified or the version is pre-1.7, then a Java 1.7 is sought.
  */
-NSString * findJavaDylib (
-                          NSString *jvmRequired,
-                          bool jrePreferred,
-                          bool jdkPreferred,
-                          bool isDebugging,
-                          bool exactMatch)
+NSString * findJava (
+                     NSString *jvmRequired,
+                     bool jrePreferred,
+                     bool jdkPreferred,
+                     bool isDebugging,
+                     bool exactMatch)
 {
     Log(@"Searching for a JRE.");
     int required = extractMajorVersion(jvmRequired);
@@ -746,28 +746,26 @@ NSString * findJavaDylib (
     Log(@"Searching for a Java %d", required);
 
     //  First, if a JRE is acceptible, try to find one with required Java version.
-    //  If found, return address for dylib that should be in the JRE package.
     if (jdkPreferred) {
         Log(@"A JDK is preferred; will not search for a JRE.");
     }
     else {
-        NSString * dylib = findJREDylib (required, isDebugging, exactMatch);
+        NSString * javaHome = findJRE (required, isDebugging, exactMatch);
 
-        if (dylib != nil) { return dylib; }
+        if (javaHome != nil) { return javaHome; }
 
         Log(@"No matching JRE found.");
     }
 
     // If JRE not found or if JDK preferred, look for an acceptable JDK
-    // (probably in /Library/Java/JavaVirtualMachines if so). If found,
-    // return return address of dylib in the JRE within the JDK.
+    // (probably in /Library/Java/JavaVirtualMachines if so).
     if (jrePreferred) {
         Log(@"A JRE is preferred; will not search for a JDK.");
     }
     else {
-        NSString * dylib = findJDKDylib (required, isDebugging, exactMatch);
+        NSString * javaHome = findJDK (required, isDebugging, exactMatch);
 
-        if (dylib != nil) { return dylib; }
+        if (javaHome != nil) { return javaHome; }
 
         Log(@"No matching JDK found.");
     }
@@ -778,16 +776,15 @@ NSString * findJavaDylib (
 }
 
 /**
- *  Searches for a JRE dylib of the specified version or later.
+ *  Searches for a JRE of the specified version or later.
  */
-NSString * findJREDylib (
-                         int jvmRequired,
-                         bool isDebugging,
-                         bool exactMatch)
+NSString * findJRE (
+                    int jvmRequired,
+                    bool isDebugging,
+                    bool exactMatch)
 {
     // Try the "java -version" shell command and see if we get a response and
     // if so whether the version  is acceptable.
-    // If found, return address for dylib that should be in the JRE package.
     // Note that for unknown but ancient reasons, the result is output to stderr
     // rather than to stdout.
     @try
@@ -856,15 +853,14 @@ NSString * findJREDylib (
 }
 
 //  Having failed to find a JRE in the usual location, see if a JDK is installed
-//  (probably in /Library/Java/JavaVirtualMachines). If so, return address of
-//  dylib in the JRE within the JDK.
+//  (probably in /Library/Java/JavaVirtualMachines).
 /**
- *  Searches for a JDK dylib of the specified version or later.
+ *  Searches for a JDK of the specified version or later.
  */
-NSString * findJDKDylib (
-                         int jvmRequired,
-                         bool isDebugging,
-                         bool exactMatch)
+NSString * findJDK (
+                    int jvmRequired,
+                    bool isDebugging,
+                    bool exactMatch)
 {
     @try
     {
@@ -907,8 +903,8 @@ NSString * findJDKDylib (
         }
 
         int version = 0;
-        
-    //  ... and outRead will include something like 
+
+    //  ... and outRead will include something like
     //  "/Library/Java/JavaVirtualMachines/jdk-12.0.1.jdk/Contents/Home" or
     //  "/Library/Java/JavaVirtualMachines/zulu-8.jdk/Contents/Home"
 
