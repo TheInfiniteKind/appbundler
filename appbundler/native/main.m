@@ -735,7 +735,7 @@ const char * tmpFile() {
 /**
  *  Searches for a JRE or JDK of the specified version or later.
  *  First checks the "usual" JRE location, and failing that looks for a JDK.
- *  The version required should be a string of form "1.X". If no version is
+ *  The version required should be a string of form "1.X" or "X". If no version is
  *  specified or the version is pre-1.7, then a Java 1.7 is sought.
  */
 NSString * findJava (
@@ -755,7 +755,7 @@ NSString * findJava (
 
     Log(@"Searching for a Java %d", required);
 
-    //  First, if a JRE is acceptible, try to find one with required Java version.
+    //  First, if a JRE is acceptable, try to find one with required Java version.
     if (jdkPreferred) {
         Log(@"A JDK is preferred; will not search for a JRE.");
     }
