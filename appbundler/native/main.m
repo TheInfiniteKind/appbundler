@@ -271,14 +271,14 @@ int launch(char *commandName, int progargc, char *progargv[]) {
 
         if (libJLI == NULL)
         {
-            Log(@"dlopen of Dylib failed");
+            Log(@"dlopen of Dylib failed: %s", dlerror());
         }
         else
         {
             jli_LaunchFxnPtr = dlsym(libJLI, "JLI_Launch");
             if (jli_LaunchFxnPtr == NULL)
             {
-                Log(@"Could not find symbol 'JLI_Launch' in Dylib");
+                Log(@"Could not find symbol 'JLI_Launch' in Dylib: %s", dlerror());
             }
         }
     }
