@@ -258,19 +258,28 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         }
     }
 
+    JLI_Launch_t jli_LaunchFxnPtr = NULL;
     const char *libjliPath = NULL;
     if (javaDylib != nil)
     {
         libjliPath = [javaDylib fileSystemRepresentation];
-    }
 
-    Log(@"Launchpath: %s", libjliPath);
+        Log(@"Launchpath: %s", libjliPath);
 
-    void *libJLI = dlopen(libjliPath, RTLD_LAZY);
+        void *libJLI = dlopen(libjliPath, RTLD_LAZY);
 
-    JLI_Launch_t jli_LaunchFxnPtr = NULL;
-    if (libJLI != NULL) {
-        jli_LaunchFxnPtr = dlsym(libJLI, "JLI_Launch");
+        if (libJLI == NULL)
+        {
+            Log(@"dlopen of Dylib failed");
+        }
+        else
+        {
+            jli_LaunchFxnPtr = dlsym(libJLI, "JLI_Launch");
+            if (jli_LaunchFxnPtr == NULL)
+            {
+                Log(@"Could not find symbol 'JLI_Launch' in Dylib");
+            }
+        }
     }
 
     if (jli_LaunchFxnPtr == NULL) {
