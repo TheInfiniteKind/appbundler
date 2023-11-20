@@ -90,6 +90,7 @@ int launch(char *, int, char **);
 NSString * findJava (NSString *, bool, bool, bool);
 NSString * findJRE (int, bool);
 NSString * findJDK (int, bool);
+bool checkJavaVersionCompatibility (NSString *, int, bool);
 int extractMajorVersion (NSString *);
 NSString * convertRelativeFilePath(NSString *);
 NSString * addDirectoryToSystemArguments(NSUInteger, NSSearchPathDomainMask, NSString *, NSMutableArray *);
@@ -792,79 +793,20 @@ NSString * findJRE (
                     int jvmRequired,
                     bool exactMatch)
 {
-    // Try the "java -version" shell command and see if we get a response and
-    // if so whether the version  is acceptable.
-    // Note that for unknown but ancient reasons, the result is output to stderr
-    // rather than to stdout.
-    @try
+    if (checkJavaVersionCompatibility(@JAVA_RUNTIME, jvmRequired, exactMatch))
     {
-        NSTask *task = [[NSTask alloc] init];
-        [task setLaunchPath:[@JAVA_RUNTIME stringByAppendingPathComponent:@"bin/java"]];
-
-        NSArray *args = [NSArray arrayWithObjects: @"-version", nil];
-        [task setArguments:args];
-
-        NSPipe *stdout = [NSPipe pipe];
-        [task setStandardOutput:stdout];
-
-        NSPipe *stderr = [NSPipe pipe];
-        [task setStandardError:stderr];
-
-        [task setStandardInput:[NSPipe pipe]];
-
-        NSFileHandle *outHandle = [stdout fileHandleForReading];
-        NSFileHandle *errHandle = [stderr fileHandleForReading];
-
-        [task launch];
-        [task waitUntilExit];
-        [task release];
-
-        NSData *data1 = [outHandle readDataToEndOfFile];
-        NSData *data2 = [errHandle readDataToEndOfFile];
-
-        NSString *outRead = [[NSString alloc] initWithData:data1
-                                                  encoding:NSUTF8StringEncoding];
-        NSString *errRead = [[NSString alloc] initWithData:data2
-                                                  encoding:NSUTF8StringEncoding];
-
-        //  Found something in errRead. Parse it for a Java version string and
-        //  try to extract a major version number.
-        if (errRead != nil) {
-            int version = 0;
-
-            // The result of the version command is 'java version "1.x"' or 'java version "9"' or 'openjdk version "1.x" or 'openjdk version "12.x.y"'
-            NSRange vrange = [errRead rangeOfString:@"java version \""];
-
-            if (vrange.location != NSNotFound) {
-                NSString *vstring = [errRead substringFromIndex:(vrange.location + 14)];
-
-                vrange  = [vstring rangeOfString:@"\""];
-                vstring = [vstring substringToIndex:vrange.location];
-
-                version = extractMajorVersion(vstring);
-
-                Log(@"Found a Java %@ JRE", vstring);
-                Log(@"Looks like major version %d", extractMajorVersion(vstring));
-            }
-
-            if ( (version >= jvmRequired && !exactMatch) || (version == jvmRequired && exactMatch) ) {
-                Log(@"JRE version qualifies");
-                return @JAVA_RUNTIME;
-            }
-        }
+        return @JAVA_RUNTIME;
     }
-    @catch (NSException *exception)
+    else
     {
-        Log(@"JRE search exception: '%@'", [exception reason]);
+        return nil;
     }
-
-    return nil;
 }
 
 //  Having failed to find a JRE in the usual location, see if a JDK is installed
 //  (probably in /Library/Java/JavaVirtualMachines).
 /**
- *  Searches for a JDK of the specified version or later.
+ *  Searches for a JDK of the specified version or optionally later.
  */
 NSString * findJDK (
                     int jvmRequired,
@@ -910,48 +852,12 @@ NSString * findJDK (
             return nil;
         }
 
-        int version = 0;
+        NSString *javaHome = [outRead stringByTrimmingCharactersInSet:[NSCharacterSet
+                                                                       whitespaceAndNewlineCharacterSet]];
 
-    //  ... and outRead will include something like
-    //  "/Library/Java/JavaVirtualMachines/jdk-12.0.1.jdk/Contents/Home" or
-    //  "/Library/Java/JavaVirtualMachines/zulu-8.jdk/Contents/Home"
-
-        NSRange vrange = [outRead rangeOfString:@"jdk1."];
-        if (vrange.location == NSNotFound) {
-            // try the changed version layout from version 9 (e.g., jdk-9, zulu-12)
-            vrange = [outRead rangeOfString:@"-"];
-            vrange.location += 1;
-        } else {
-            // otherwise remove the leading jdk
-            vrange.location += 3;
-        }
-
-        if (vrange.location != NSNotFound) {
-            NSString *vstring = [outRead substringFromIndex:(vrange.location)];
-
-            vrange  = [vstring rangeOfString:@"/"];
-            vstring = [vstring substringToIndex:vrange.location];
-
-            version = extractMajorVersion(vstring);
-
-            Log(@"Found a Java %@ JDK", vstring);
-            Log(@"Looks like major version %d", extractMajorVersion(vstring));
-        }
-
-        if ( (version >= jvmRequired && !exactMatch) || (version == jvmRequired && exactMatch) ) {
-            Log(@"JDK version qualifies");
-
-            NSString *outread2 = [outRead stringByTrimmingCharactersInSet:[NSCharacterSet
-                                                                           whitespaceAndNewlineCharacterSet]];
-
-            //  Return location where LIBJLI_DY_LIB is located. Note that the path was
-            //  shortemed between JDK 8 and JDK 9.
-            if (version > 8) {
-                return outread2;
-            }
-            else {
-                return [outread2 stringByAppendingPathComponent:@"jre"];
-            }
+        if (checkJavaVersionCompatibility(javaHome, jvmRequired, exactMatch))
+        {
+            return javaHome;
         }
     }
     @catch (NSException *exception)
@@ -962,6 +868,85 @@ NSString * findJDK (
     return nil;
 }
 
+/**
+ * Checks the version of a Java home for compatibility.
+ */
+bool checkJavaVersionCompatibility (
+                                    NSString *javaHome,
+                                    int jvmRequired,
+                                    bool exactMatch)
+{
+    // Try the "java -version" shell command and see if we get a response and
+    // if so whether the version  is acceptable.
+    // Note that for unknown but ancient reasons, the result is output to stderr
+    // rather than to stdout.
+    @try
+    {
+        NSTask *task = [[NSTask alloc] init];
+        [task setLaunchPath:[javaHome stringByAppendingPathComponent:@"bin/java"]];
+
+        NSArray *args = [NSArray arrayWithObjects: @"-version", nil];
+        [task setArguments:args];
+
+        NSPipe *stdout = [NSPipe pipe];
+        [task setStandardOutput:stdout];
+
+        NSPipe *stderr = [NSPipe pipe];
+        [task setStandardError:stderr];
+
+        [task setStandardInput:[NSPipe pipe]];
+
+        NSFileHandle *outHandle = [stdout fileHandleForReading];
+        NSFileHandle *errHandle = [stderr fileHandleForReading];
+
+        [task launch];
+        [task waitUntilExit];
+        [task release];
+
+        NSData *data1 = [outHandle readDataToEndOfFile];
+        NSData *data2 = [errHandle readDataToEndOfFile];
+
+        NSString *outRead = [[NSString alloc] initWithData:data1
+                                                  encoding:NSUTF8StringEncoding];
+        NSString *errRead = [[NSString alloc] initWithData:data2
+                                                  encoding:NSUTF8StringEncoding];
+
+        //  Found something in errRead. Parse it for a Java version string and
+        //  try to extract a major version number.
+        if (errRead != nil)
+        {
+            int version = 0;
+
+            // The result of the version command is 'java version "1.x"' or 'java version "9"' or 'openjdk version "1.x" or 'openjdk version "12.x.y"'
+            NSRange vrange = [errRead rangeOfString:@"version \""];
+
+            if (vrange.location != NSNotFound)
+            {
+                NSString *vstring = [errRead substringFromIndex:(vrange.location + 9)];
+
+                vrange  = [vstring rangeOfString:@"\""];
+                vstring = [vstring substringToIndex:vrange.location];
+
+                version = extractMajorVersion(vstring);
+
+                Log(@"Found a Java %@", vstring);
+                Log(@"Looks like major version %d", version);
+            }
+
+            if ( ((version >= jvmRequired) && !exactMatch) || ((version == jvmRequired) && exactMatch) )
+            {
+                Log(@"Java version qualifies");
+                return true;
+            }
+        }
+    }
+    @catch (NSException *exception)
+    {
+        Log(@"Java version check exception: '%@'", [exception reason]);
+    }
+
+    return false;
+}
 
 /**
  *  Extract the Java major version number from a string. We expect the input
