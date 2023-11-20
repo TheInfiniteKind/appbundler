@@ -817,7 +817,9 @@ NSString * findJDK (
         NSTask *task = [[NSTask alloc] init];
         [task setLaunchPath:@"/usr/libexec/java_home"];
 
-        NSArray *args = [NSArray arrayWithObjects: @"-v", [NSString stringWithFormat:@"1.%i%@", jvmRequired, exactMatch?@"":@"+"], nil];
+        NSString *versionPattern = (jvmRequired > 8) ? @"%i%@" : @"1.%i%@";
+
+        NSArray *args = [NSArray arrayWithObjects: @"-v", [NSString stringWithFormat:versionPattern, jvmRequired, exactMatch?@"":@"+"], nil];
         [task setArguments:args];
 
         NSPipe *stdout = [NSPipe pipe];
