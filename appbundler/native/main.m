@@ -974,7 +974,7 @@ int extractMajorVersion (NSString *vstring) {
 
     //  Expecting either a java version of form 1.X, 1.X.Y_ZZ or jdk1.X.Y_ZZ.
     //  Strip everything from start and ending that aren't part of the version number
-    NSCharacterSet* nonDigits = [[NSCharacterSet characterSetWithCharactersInString:@"0123456789."] invertedSet];
+    NSCharacterSet* nonDigits = [[NSCharacterSet characterSetWithCharactersInString:@"0123456789"] invertedSet];
     vstring = [vstring stringByTrimmingCharactersInSet:nonDigits];
 
     if([vstring hasPrefix:@"1."]) {  // this is the version < 9 layout. Remove the leading "1."
