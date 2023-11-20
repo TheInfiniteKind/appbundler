@@ -303,8 +303,8 @@ int launch(char *commandName, int progargc, char *progargv[]) {
             msg = NSLocalizedString(@"JRELoadError", @UNSPECIFIED_ERROR);
         }
 
-        Log(@"Error launching JVM Runtime (%@) Relative Path: '%@' (dylib: %@)\n  error: %@",
-             runtime, runtimePath, javaDylib, msg);
+        Log(@"Error launching JVM Runtime (%@) (dylib: %@)\n  error: %@",
+             runtime != nil ? runtime : runtimePath, javaDylib, msg);
 
         [[NSException exceptionWithName:@JAVA_LAUNCH_ERROR
                                  reason:msg userInfo:nil] raise];
