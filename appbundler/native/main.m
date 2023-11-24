@@ -46,6 +46,7 @@
 #define JDK_PREFERRED_KEY "JDKPreferred"
 #define JVM_DEBUG_KEY "JVMDebug"
 #define IGNORE_PSN_KEY "IgnorePSN"
+#define IGNORE_VERBOSE_KEY "IgnoreVerbose"
 
 #define JVM_RUN_PRIVILEGED "JVMRunPrivileged"
 #define JVM_RUN_JNLP "JVMJNLPLauncher"
@@ -600,6 +601,24 @@ int launch(char *commandName, int progargc, char *progargv[]) {
         while (i < newProgargc) {
             NSString *s = [NSString stringWithFormat:@"%s", newProgargv[i]];
             if ([psnTest evaluateWithObject: s]){
+                shift++;
+                newProgargc--;
+            }
+            newProgargv[i] = newProgargv[i+shift];
+            i++;
+        }
+    }
+
+    bool ignoreVerbose = [[infoDictionary objectForKey:@IGNORE_VERBOSE_KEY] boolValue];
+    if (ignoreVerbose)
+    {
+        int shift = 0;
+        int i = 0;
+        while (i < newProgargc)
+        {
+            NSString *s = [NSString stringWithFormat:@"%s", newProgargv[i]];
+            if (strcmp(newProgargv[i], "--verbose") == 0)
+            {
                 shift++;
                 newProgargc--;
             }

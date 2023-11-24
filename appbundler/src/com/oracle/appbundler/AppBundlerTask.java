@@ -92,6 +92,7 @@ public class AppBundlerTask extends Task {
     private boolean hideDockIcon = false;
     private boolean isDebug = false;
     private boolean ignorePSN = false;
+    private boolean ignoreVerbose = false;
 
     // JVM info properties
     private String mainClassName = null;
@@ -216,6 +217,10 @@ public class AppBundlerTask extends Task {
 
     public void setIgnorePSN(boolean ignorePSN) {
         this.ignorePSN = ignorePSN;
+    }
+
+    public void setIgnoreVerbose(boolean ignoreVerbose) {
+        this.ignoreVerbose = ignoreVerbose;
     }
 
     public void setMainClassName(String mainClassName) {
@@ -663,9 +668,10 @@ public class AppBundlerTask extends Task {
             writeProperty(xout, "NSHighResolutionCapable", highResolutionCapable, 2);
             writeProperty(xout, "NSSupportsAutomaticGraphicsSwitching", supportsAutomaticGraphicsSwitching, 2);
             writeProperty(xout, "IgnorePSN", ignorePSN, 2);
+            writeProperty(xout, "IgnoreVerbose", ignoreVerbose, 2);
 
             writeProperty(xout, "NSRequiresAquaSystemAppearance", requiresAquaAppearance, 2);
-            
+
             if(registeredProtocols.size() > 0){
                 writeKey(xout, "CFBundleURLTypes", 2);
                 writeIndentation(xout, 2);
