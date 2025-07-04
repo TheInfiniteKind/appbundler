@@ -509,7 +509,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
 
     if ( classPath != nil && !runningModule ) {
         [systemArguments addObject:classPath];
-    } else if (modulePath != nil && runningModule) {
+    } else if (runningModule) {
         [systemArguments addObject:modulePath];
     }
 
