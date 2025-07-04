@@ -334,7 +334,7 @@ int launch(char *commandName, int progargc, char *progargv[]) {
     NSString *javaPath = [mainBundlePath stringByAppendingString:@"/Contents/Java"];
     NSMutableArray *systemArguments = [[NSMutableArray alloc] init];
     NSMutableString *classPath = [NSMutableString stringWithString:@"-Djava.class.path="];
-    NSMutableString *modulePath = [NSMutableString stringWithFormat:@"--module-path="];
+    NSMutableString *modulePath = [NSMutableString stringWithString:@"--module-path="];
 
     // Set the library path
     NSString *libraryPath = [NSString stringWithFormat:@"-Djava.library.path=%@/Contents/MacOS", mainBundlePath];
