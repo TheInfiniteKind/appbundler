@@ -293,6 +293,11 @@ public class AppBundlerTask extends Task {
         if ((document.getContentTypes() == null) && (document.getExtensions() == null)) {
             throw new BuildException("Document content type or extension is required.");
         }
+
+        if ((document.getContentTypes() != null) && (document.getExtensions() != null)) {
+            throw new BuildException("Cannot specify document content type and extension together.");
+        }
+
         this.bundleDocuments.add(document);
     }
 
