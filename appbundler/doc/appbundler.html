@@ -76,10 +76,10 @@ questions.
   <tr>
     <td valign="top">hideDockIcon</td>
     <td valign="top">Set to true to prevent display of the application icon on the Mac OS X dock.
-    Corresponds to the <code>LSUIElement</code> key in the <tt>Info.plist</tt> file. 
+    Corresponds to the <code>LSUIElement</code> key in the <tt>Info.plist</tt> file.
     (<a href="https://developer.apple.com/library/mac/documentation/General/Reference/InfoPlistKeyReference/Articles/LaunchServicesKeys.html#//apple_ref/doc/uid/20001431-108256">Details</a>)</td>
     <td align="center" valign="top">No</td>
-  </tr>      
+  </tr>
   <tr>
     <td valign="top">shortversion</td>
     <td valign="top">The release version number string for the application.
@@ -117,41 +117,41 @@ questions.
     <td valign="top">The name of the bundled application's main class.</td>
     <td align="center" valign="top">Yes, alternative to <code>jnlplaunchername</code></td>
     <td align="center" valign="top">Yes</td>
-  </tr>  
+  </tr>
   <tr>
     <td valign="top">plistClassPaths</td>
     <td valign="top">A comma-separated list of classpath-elements which are used for the java application.
     <tt>$APP_ROOT</tt> is replaced by the path of the <tt>.app</tt>-bundle. Required only if not
     the libraries specified by the <tt>classpath</tt> and <tt>librarypath</tt> should be used.</td>
     <td align="center" valign="top">No</td>
-  </tr>  
+  </tr>
   <tr>
     <td valign="top">plistModulePaths</td>
     <td valign="top">A comma-separated list of modulepath-elements which are used for the java application.
     <tt>$APP_ROOT</tt> is replaced by the path of the <tt>.app</tt>-bundle. Only applicable if <tt>mainclassname</tt>
     references a modular class. By default uses all of the libraries added to the bundle using <tt>modulepath</tt>.</td>
     <td align="center" valign="top">No</td>
-  </tr>  
+  </tr>
   <tr>
     <td valign="top">jvmRequired</td>
     <td valign="top">Specifies the required Java virtual machine version.</td>
     <td align="center" valign="top">No (defaults to <tt>1.7</tt>)</td>
-  </tr>     
+  </tr>
   <tr>
     <td valign="top">jrePreferred</td>
     <td valign="top">If set to <tt>true</tt>, a Java Runtime Edition is required for execution. If both <tt>jrePreferred</tt> and <tt>jdkPreferred</tt> are set <tt>true</tt>, then a JRE is preferred but a JDK ia also accepted.</td>
     <td align="center" valign="top">No</td>
-  </tr>      
+  </tr>
   <tr>
     <td valign="top">jdkPreferred</td>
     <td valign="top">If set to <tt>true</tt>, a Java Development Kit is required for execution. If both <tt>jrePreferred</tt> and <tt>jdkPreferred</tt> are set <tt>true</tt>, then a JRE is preferred but a JDK ia also accepted.</td>
     <td align="center" valign="top">No</td>
-  </tr>    
+  </tr>
   <tr>
     <td valign="top">minimumSystemVersion</td>
     <td valign="top">Indicates the minimum version of OS X required for this app to run.
     Corresponds to the <code>LSMinimumSystemVersion</code> key in the <tt>Info.plist</tt>
-    file.</td> 
+    file.</td>
     (<a href="https://developer.apple.com/library/ios/documentation/General/Reference/InfoPlistKeyReference/Articles/LaunchServicesKeys.html#//apple_ref/doc/uid/20001431-113253">Details</a>)</td>
     <td align="center" valign="top">No</td>
   </tr>
@@ -162,7 +162,7 @@ questions.
   </tr>
   <tr>
     <td valign="top">workingdirectory</td>
-    <td valign="top">Specifies the working directory of the application. 
+    <td valign="top">Specifies the working directory of the application.
     <tt>$APP_ROOT</tt> is replaced by the path of the <tt>.app</tt>-bundle.</td>
     <td align="center" valign="top">No</td>
   </tr>
@@ -173,9 +173,9 @@ questions.
   </tr>
   <tr>
     <td valign="top">highResolutionCapable</td>
-    <td valign="top">Sets the <i>High Resolution Capable</i> flag.   
+    <td valign="top">Sets the <i>High Resolution Capable</i> flag.
     Corresponds to the <code>NSHighResolutionCapable</code> key in the <tt>Info.plist</tt>
-    file.</td> 
+    file.</td>
     <td align="center" valign="top">No</td>
   </tr>
   <tr>
@@ -193,6 +193,12 @@ questions.
   <tr>
     <td valign="top">isDebug</td>
     <td valign="top">If set to <tt>true</tt>, additiona console output will be produced during startup.</td>
+    <td align="center" valign="top">No</td>
+  </tr>
+  <tr>
+    <td valign="top">ignoreVerbose</td>
+    <td valign="top">If set to <tt>true</tt>, the <tt>--verbose</tt> argument used for debugging the launcher
+      is filtered out, for example if the application does not accept this as parameter itself.</td>
     <td align="center" valign="top">No</td>
   </tr>
 </table>
@@ -373,7 +379,7 @@ Of named options, only the value is passed to the JVM, not the name. The name me
   <tr>
     <td valign="top">contentTypes</td>
     <td valign="top">A comma-separated list of <a href="https://developer.apple.com/library/mac/documentation/FileManagement/Conceptual/understanding_utis/understand_utis_intro/understand_utis_intro.html#//apple_ref/doc/uid/TP40001319">Uniform Type Identifiers</a> defining each a supported file type.
-    If you reference custom filetypes, declare them using a <a href="#typedeclaration">typedeclaration</a>. 
+    If you reference custom filetypes, declare them using a <a href="#typedeclaration">typedeclaration</a>.
     If set, <i>extensions</i> and <i>isPackage</i> are ignored. See the <a href="https://developer.apple.com/library/mac/documentation/Miscellaneous/Reference/UTIRef/Articles/System-DeclaredUniformTypeIdentifiers.html">UTI reference</a> for a list of default UTIs.</td>
     <td valign="top"><tt>LSItemContentTypes</tt></td>
     <td align="center" valign="top">Yes (or <i>extensions</i>)</td>
@@ -413,7 +419,7 @@ Of named options, only the value is passed to the JVM, not the name. The name me
     <td valign="top">Specifies whether the document is distributed as a bundle. If set to true, the bundle directory is treated as a file.</td>
     <td valign="top"><tt>LSTypeIsPackage</tt></td>
     <td align="center" valign="top">No (default: <tt>false</tt>)</td>
-  </tr> 
+  </tr>
   <tr>
     <td valign="top">exportableTypes</td>
     <td valign="top">A comma-separated list of <a href="https://developer.apple.com/library/mac/documentation/FileManagement/Conceptual/understanding_utis/understand_utis_intro/understand_utis_intro.html#//apple_ref/doc/uid/TP40001319">Uniform Type Identifiers</a> defining a supported file type to which this document can export its content.
@@ -486,8 +492,8 @@ Required if you reference non-system UTIs in <a href="#bundledocument">bundledoc
   </tr>
   <tr>
     <td valign="top">imported</td>
-    <td valign="top">If set to <tt>true</tt>, the declaration is listed under the <tt>UTImportedTypeDeclarations</tt> key. 
-    Otherwise, it is listed under <tt>UTExportedTypeDeclarations</tt>. 
+    <td valign="top">If set to <tt>true</tt>, the declaration is listed under the <tt>UTImportedTypeDeclarations</tt> key.
+    Otherwise, it is listed under <tt>UTExportedTypeDeclarations</tt>.
     If your code relies on third-party UTI types that may not be present on the system, you should declare those UTIs as imported types.</td>
     <td valign="top">-</td>
     <td align="center" valign="top">No</td>
@@ -541,7 +547,7 @@ environment variable with the resulting executable.</p>
         icon="icon.icns"
         applicationCategory="public.app-category.developer-tools"
         jnlplaunchername="Contents/_CodeSignature/SwingSet2.jnlp"&gt;
-        
+
         &lt;value="-Xdock:icon=Contents/Resources/icon.icns" /&gt;
         &lt;option value="-Dapple.laf.useScreenMenuBar=true"/&gt;
     &lt;/bundleapp&gt;
@@ -552,7 +558,7 @@ environment variable with the resulting executable.</p>
             &lt;include name="**/*.jnlp" /&gt;
         &lt;/fileset&gt;
     &lt;/copy&gt;
-	
+
     &lt;!-- Sign File --&gt;
     &lt;exec executable="codesign" os="Mac OS X" failonerror="true"&gt;
         &lt;arg value="-f" /&gt;
