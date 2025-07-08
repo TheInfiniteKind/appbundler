@@ -950,8 +950,8 @@ bool checkJavaVersionCompatibility (
 
                 version = extractMajorVersion(vstring);
 
-                Log(@"Found a Java %@", vstring);
-                Log(@"Looks like major version %d", version);
+                Log(@"Found a Java version: %@ (at: %@)", vstring, javaHome);
+                Log(@"Looks like major version: %d", version);
             }
 
             if ( ((version >= jvmRequired) && !exactMatch) || ((version == jvmRequired) && exactMatch) )
